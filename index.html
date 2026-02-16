@@ -469,6 +469,24 @@
       color: var(--text-muted);
       font-weight: 400;
     }
+    .result-toggle-row {
+      margin-bottom: 14px;
+    }
+    .results-showcase .result-toggle-row .toggle-slider {
+      background: rgba(255,255,255,0.3);
+    }
+    .results-showcase .result-toggle-row .toggle-track input:checked + .toggle-slider {
+      background: var(--accent);
+    }
+    .results-showcase .result-toggle-row .toggle-track input:focus-visible + .toggle-slider {
+      box-shadow: 0 0 0 3px rgba(255,255,255,0.28);
+    }
+    .results-showcase .result-toggle-row .toggle-label {
+      color: rgba(255,255,255,0.95);
+    }
+    .results-showcase .result-toggle-row .toggle-hint {
+      color: rgba(255,255,255,0.75);
+    }
 
     /* ============== CHAIN PREVIEW ============== */
     .preview {
@@ -610,6 +628,9 @@
       font-weight: 600;
       margin-bottom: 8px;
     }
+    .settings-group {
+      margin-top: 14px;
+    }
     .settings-select {
       width: 100%;
       padding: 10px 12px;
@@ -703,13 +724,6 @@
     .tooltip-wrap.open .tooltip-body {
       display: block;
       animation: fadeInUp 0.2s ease-out both;
-    }
-
-    /* ============== SETTINGS DIVIDER ============== */
-    .settings-divider {
-      border: none;
-      border-top: 1px solid var(--border);
-      margin: 14px 0;
     }
 
     /* ============== REFINEMENT ============== */
@@ -929,7 +943,7 @@
       </div>
     </header>
 
-    <!-- Sex selector -->
+    <!-- Identity -->
     <div class="card">
       <div class="card-label">I am</div>
       <div class="seg-control" id="sex-selector">
@@ -939,6 +953,10 @@
         <label for="sex-female">Female</label>
         <input type="radio" name="sex" id="sex-unknown" value="-1" checked>
         <label for="sex-unknown">Either</label>
+      </div>
+      <div class="settings-group">
+        <label class="settings-label" for="dialect-select">Family Dialect?</label>
+        <select id="dialect-select" class="settings-select" aria-label="Family Dialect Preference"></select>
       </div>
     </div>
 
@@ -961,6 +979,16 @@
     <!-- Results -->
     <div class="results-showcase" id="results-section" hidden>
       <div class="card-label">Result</div>
+      <div class="toggle-row result-toggle-row">
+        <div class="toggle-track">
+          <input type="checkbox" id="reverse-toggle">
+          <span class="toggle-slider"></span>
+        </div>
+        <label class="toggle-label" for="reverse-toggle">
+          Reverse lookup
+          <span class="toggle-hint">- how they address me</span>
+        </label>
+      </div>
       <div class="result-heading-row">
         <div class="result-subtitle">Recommended (your dialect)</div>
         <span class="tooltip-wrap" id="tooltip-why">
@@ -977,24 +1005,6 @@
         <div class="result-subtitle">Also acceptable</div>
       </div>
       <div class="results-area" id="results-container" aria-live="polite"></div>
-    </div>
-
-    <!-- Settings: dialect + reverse toggle -->
-    <div class="card">
-      <div class="card-label">Settings</div>
-      <label class="settings-label" for="dialect-select">Family Dialect Preference</label>
-      <select id="dialect-select" class="settings-select" aria-label="Family Dialect Preference"></select>
-      <hr class="settings-divider">
-      <div class="toggle-row">
-        <div class="toggle-track">
-          <input type="checkbox" id="reverse-toggle">
-          <span class="toggle-slider"></span>
-        </div>
-        <label class="toggle-label" for="reverse-toggle">
-          Reverse lookup
-          <span class="toggle-hint">- how they address me</span>
-        </label>
-      </div>
     </div>
 
     <footer>
