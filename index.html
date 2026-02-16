@@ -499,7 +499,72 @@
       font-size: 0.9rem;
       padding: 12px 0;
     }
-
+    .settings-label {
+      display: block;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .settings-select {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 0.92rem;
+      font-family: 'Figtree', system-ui, sans-serif;
+      font-weight: 500;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-xs);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+    }
+    .settings-select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(184, 52, 58, 0.12);
+    }
+    .result-heading-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .result-subtitle {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(255,255,255,0.72);
+      font-weight: 700;
+    }
+    .tooltip-hint {
+      border: 1px solid rgba(255,255,255,0.45);
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: help;
+      font-family: inherit;
+    }
+    .pin-btn {
+      margin-top: 10px;
+      border: 1px solid rgba(255,255,255,0.45);
+      background: rgba(255,255,255,0.14);
+      color: #fff;
+      border-radius: var(--radius-xs);
+      padding: 8px 12px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .pin-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
     /* ============== REFINEMENT ============== */
     .refine-panel {
       background: var(--refine-bg);
@@ -657,13 +722,19 @@
       </div>
     </div>
 
-    <!-- Chain builder -->
+            <!-- Chain builder -->
     <div class="card">
       <div class="card-label">Relationship chain</div>
       <div id="chain-container"></div>
       <button type="button" class="btn-add" id="add-step-btn">+ Add step</button>
     </div>
 
+    <!-- Dialect settings -->
+    <div class="card">
+      <div class="card-label">Settings</div>
+      <label class="settings-label" for="dialect-select">Family Dialect Preference</label>
+      <select id="dialect-select" class="settings-select" aria-label="Family Dialect Preference"></select>
+    </div>
     <!-- Reverse toggle -->
     <div class="card">
       <div class="toggle-row">
@@ -684,20 +755,30 @@
       <div class="preview" id="chain-preview"></div>
     </div>
 
-    <!-- Results -->
+        <!-- Results -->
     <div class="results-showcase" id="results-section" hidden>
       <div class="card-label">Result</div>
+      <div class="result-heading-row">
+        <div class="result-subtitle">Recommended (your dialect)</div>
+        <button
+          type="button"
+          class="tooltip-hint"
+          title="Different families and dialects use different address terms; choose what your family uses."
+        >
+          Why multiple?
+        </button>
+      </div>
+      <div class="results-area" id="recommended-container" aria-live="polite"></div>
+      <button type="button" class="pin-btn" id="pin-term-btn" disabled>Pin my family's term</button>
+      <div class="result-heading-row" style="margin-top:14px">
+        <div class="result-subtitle">Also acceptable</div>
+      </div>
       <div class="results-area" id="results-container" aria-live="polite"></div>
+      <div class="results-note" id="sources-note"></div>
     </div>
 
     <!-- Refinement -->
     <div id="refinement-area" aria-live="polite"></div>
-
-    <!-- Refined results -->
-    <div class="card refined-section" id="refined-section" hidden>
-      <div class="card-label">Refined result</div>
-      <div class="chips" id="refined-container"></div>
-    </div>
 
     <footer>
       <div class="footer-divider"></div>
@@ -705,382 +786,9 @@
     </footer>
   </main>
 
-  <script type="module">
-    import relationship from './relationship.min.mjs';
-
-    // --- State ---
-    let stepsData = null;
-    let numerals = null;
-    let connector = '';
-    let chain = [];
-    let currentResults = [];
-    let pinyinFn = null;
-    const cache = new Map();
-    const MAX_CACHE = 200;
-
-    // --- DOM refs ---
-    const chainContainer = document.getElementById('chain-container');
-    const addStepBtn = document.getElementById('add-step-btn');
-    const reverseToggle = document.getElementById('reverse-toggle');
-    const previewSection = document.getElementById('preview-section');
-    const chainPreview = document.getElementById('chain-preview');
-    const resultsSection = document.getElementById('results-section');
-    const resultsContainer = document.getElementById('results-container');
-    const refinementArea = document.getElementById('refinement-area');
-    const refinedSection = document.getElementById('refined-section');
-    const refinedContainer = document.getElementById('refined-container');
-
-    // --- Init ---
-    async function init() {
-      try {
-        const resp = await fetch('./kinship_en_steps.json');
-        const data = await resp.json();
-        stepsData = data.steps;
-        numerals = data.numerals;
-        connector = data.buildText.connector;
-      } catch (e) {
-        document.querySelector('main').innerHTML =
-          '<p class="loading">Failed to load step data. Please serve this page from a web server (not file://).</p>';
-        return;
-      }
-
-      // Load pinyin library (non-blocking, graceful fallback)
-      try {
-        const mod = await import('https://cdn.jsdelivr.net/npm/pinyin-pro/+esm');
-        pinyinFn = mod.pinyin;
-      } catch (e) {
-        console.warn('Pinyin library unavailable, showing characters only');
-      }
-
-      addStepBtn.addEventListener('click', () => {
-        chain.push({ stepId: stepsData[0].id, rank: null });
-        renderChain();
-        update();
-      });
-
-      document.getElementById('sex-selector').addEventListener('change', () => update());
-      reverseToggle.addEventListener('change', () => update());
-
-      // Start with one step
-      chain.push({ stepId: stepsData[0].id, rank: null });
-      renderChain();
-    }
-
-    // --- Chain rendering ---
-    function renderChain() {
-      chainContainer.innerHTML = '';
-      chain.forEach((entry, i) => {
-        const step = stepsData.find(s => s.id === entry.stepId);
-        const row = document.createElement('div');
-        row.className = 'step-row';
-
-        const num = document.createElement('span');
-        num.className = 'step-num';
-        num.textContent = i + 1;
-        row.appendChild(num);
-
-        const sel = document.createElement('select');
-        sel.setAttribute('aria-label', 'Relationship step ' + (i + 1));
-        stepsData.forEach(s => {
-          const opt = document.createElement('option');
-          opt.value = s.id;
-          opt.textContent = s.enLabel;
-          if (s.id === entry.stepId) opt.selected = true;
-          sel.appendChild(opt);
-        });
-        sel.addEventListener('change', () => {
-          chain[i].stepId = sel.value;
-          const newStep = stepsData.find(s => s.id === sel.value);
-          if (!newStep.rankable) chain[i].rank = null;
-          renderChain();
-          update();
-        });
-        row.appendChild(sel);
-
-        if (step && step.rankable) {
-          const rankSel = document.createElement('select');
-          rankSel.className = 'rank-select';
-          rankSel.setAttribute('aria-label', 'Rank for step ' + (i + 1));
-          const noRank = document.createElement('option');
-          noRank.value = '';
-          noRank.textContent = '#';
-          rankSel.appendChild(noRank);
-          for (let r = 1; r <= 10; r++) {
-            const opt = document.createElement('option');
-            opt.value = r;
-            opt.textContent = r;
-            if (entry.rank === r) opt.selected = true;
-            rankSel.appendChild(opt);
-          }
-          rankSel.addEventListener('change', () => {
-            chain[i].rank = rankSel.value ? parseInt(rankSel.value) : null;
-            update();
-          });
-          row.appendChild(rankSel);
-        }
-
-        if (chain.length > 1) {
-          const removeBtn = document.createElement('button');
-          removeBtn.type = 'button';
-          removeBtn.className = 'btn-remove';
-          removeBtn.setAttribute('aria-label', 'Remove step ' + (i + 1));
-          removeBtn.innerHTML = '&times;';
-          removeBtn.addEventListener('click', () => {
-            chain.splice(i, 1);
-            renderChain();
-            update();
-          });
-          row.appendChild(removeBtn);
-        }
-
-        chainContainer.appendChild(row);
-      });
-    }
-
-    // --- Build Chinese text ---
-    function buildChineseText() {
-      return chain.map(entry => {
-        const step = stepsData.find(s => s.id === entry.stepId);
-        if (!step) return '';
-        if (entry.rank && step.rankable && numerals[String(entry.rank)]) {
-          const numChar = numerals[String(entry.rank)];
-          const baseChar = step.zhToken.charAt(0);
-          return numChar + baseChar;
-        }
-        return step.zhToken;
-      }).join(connector);
-    }
-
-    // --- Engine lookup with cache ---
-    function lookup(text, sex, reverse) {
-      const key = `${sex}|${text}|${reverse}`;
-      if (cache.has(key)) return cache.get(key);
-      const raw = relationship({ text, sex, type: 'default', reverse, mode: 'default', optimal: false });
-      const results = [...new Set(raw || [])];
-      if (cache.size >= MAX_CACHE) cache.delete(cache.keys().next().value);
-      cache.set(key, results);
-      return results;
-    }
-
-    // --- Get current sex ---
-    function getSex() {
-      const checked = document.querySelector('input[name="sex"]:checked');
-      return checked ? parseInt(checked.value) : -1;
-    }
-
-    // --- Update everything ---
-    function update() {
-      refinementArea.innerHTML = '';
-      refinedSection.hidden = true;
-
-      const zhText = buildChineseText();
-      if (!zhText) {
-        previewSection.hidden = true;
-        resultsSection.hidden = true;
-        return;
-      }
-
-      previewSection.hidden = false;
-      chainPreview.innerHTML = '<span class="zh-text">' + escapeHtml(zhText) + '</span>';
-
-      const sex = getSex();
-      const reverse = reverseToggle.checked;
-      currentResults = lookup(zhText, sex, reverse);
-
-      resultsSection.hidden = false;
-      renderResults(resultsContainer, currentResults);
-
-      const ambiguities = detectAmbiguities(currentResults);
-      if (ambiguities.length > 0) {
-        renderRefinement(ambiguities);
-      }
-    }
-
-    // --- Render result chips ---
-    function renderResults(container, results) {
-      container.innerHTML = '';
-      if (results.length === 0) {
-        container.innerHTML = '<div class="results-empty">No results found for this chain.</div>';
-        return;
-      }
-
-      const chipsDiv = document.createElement('div');
-      chipsDiv.className = 'chips';
-      results.forEach((term, idx) => {
-        const chip = document.createElement('button');
-        chip.type = 'button';
-        chip.className = 'chip';
-        chip.style.animationDelay = (idx * 0.06) + 's';
-
-        const textSpan = document.createElement('span');
-        textSpan.className = 'chip-text';
-        const chars = [...term];
-        const pinyinArr = pinyinFn ? pinyinFn(term, { type: 'array' }) : [];
-        chars.forEach((ch, ci) => {
-          const col = document.createElement('span');
-          col.className = 'char-col';
-          const charEl = document.createElement('span');
-          charEl.className = 'char';
-          charEl.textContent = ch;
-          col.appendChild(charEl);
-          if (pinyinArr[ci]) {
-            const pyEl = document.createElement('span');
-            pyEl.className = 'py';
-            pyEl.textContent = pinyinArr[ci];
-            col.appendChild(pyEl);
-          }
-          textSpan.appendChild(col);
-        });
-        chip.appendChild(textSpan);
-
-        const hint = document.createElement('span');
-        hint.className = 'copy-hint';
-        hint.textContent = 'copy';
-        chip.appendChild(hint);
-
-        chip.addEventListener('click', () => copyTerm(chip, term));
-        chipsDiv.appendChild(chip);
-      });
-      container.appendChild(chipsDiv);
-
-      if (results.length > 1) {
-        const note = document.createElement('div');
-        note.className = 'results-note';
-        note.textContent = 'Multiple valid terms \u2014 tap to copy. Refine below if available.';
-        container.appendChild(note);
-      } else {
-        const note = document.createElement('div');
-        note.className = 'results-note';
-        note.textContent = 'Tap to copy.';
-        container.appendChild(note);
-      }
-    }
-
-    // --- Copy to clipboard ---
-    async function copyTerm(chipEl, term) {
-      try {
-        await navigator.clipboard.writeText(term);
-      } catch {
-        const ta = document.createElement('textarea');
-        ta.value = term;
-        ta.style.position = 'fixed';
-        ta.style.left = '-9999px';
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-      }
-      chipEl.classList.add('copied');
-      const hint = chipEl.querySelector('.copy-hint');
-      if (hint) hint.textContent = 'copied!';
-      setTimeout(() => {
-        chipEl.classList.remove('copied');
-        if (hint) hint.textContent = 'copy';
-      }, 1200);
-    }
-
-    // --- Refinement detection ---
-    function detectAmbiguities(results) {
-      if (results.length <= 1) return [];
-      const ambiguities = [];
-
-      const hasGe = results.some(r => r.includes('哥'));
-      const hasDi = results.some(r => r.includes('弟'));
-      if (hasGe && hasDi) {
-        ambiguities.push({
-          id: 'older-younger-brother',
-          question: 'Is this person older or younger than the reference?',
-          options: [
-            { label: 'Older', keep: '哥', remove: '弟' },
-            { label: 'Younger', keep: '弟', remove: '哥' }
-          ]
-        });
-      }
-
-      const hasJie = results.some(r => r.includes('姐'));
-      const hasMei = results.some(r => r.includes('妹'));
-      if (hasJie && hasMei) {
-        ambiguities.push({
-          id: 'older-younger-sister',
-          question: 'Is this person older or younger than the reference?',
-          options: [
-            { label: 'Older', keep: '姐', remove: '妹' },
-            { label: 'Younger', keep: '妹', remove: '姐' }
-          ]
-        });
-      }
-
-      const hasBo = results.some(r => r.includes('伯'));
-      const hasShu = results.some(r => r.includes('叔'));
-      if (hasBo && hasShu) {
-        ambiguities.push({
-          id: 'bo-shu',
-          question: "Is your father's brother older or younger than your father?",
-          options: [
-            { label: 'Older than father', keep: '伯', remove: '叔' },
-            { label: 'Younger than father', keep: '叔', remove: '伯' }
-          ]
-        });
-      }
-
-      return ambiguities;
-    }
-
-    // --- Render refinement panel ---
-    function renderRefinement(ambiguities) {
-      refinementArea.innerHTML = '';
-      ambiguities.forEach(amb => {
-        const panel = document.createElement('div');
-        panel.className = 'refine-panel';
-
-        const q = document.createElement('div');
-        q.className = 'refine-question';
-        q.textContent = amb.question;
-        panel.appendChild(q);
-
-        const opts = document.createElement('div');
-        opts.className = 'refine-options';
-        amb.options.forEach(opt => {
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'refine-btn';
-          btn.textContent = opt.label;
-          btn.addEventListener('click', () => applyRefinement(opt.keep, opt.remove));
-          opts.appendChild(btn);
-        });
-        panel.appendChild(opts);
-        refinementArea.appendChild(panel);
-      });
-    }
-
-    // --- Apply refinement ---
-    function applyRefinement(keepChar, removeChar) {
-      const filtered = currentResults.filter(r => {
-        if (r.includes(removeChar) && !r.includes(keepChar)) return false;
-        if (r.includes(removeChar) && r.includes(keepChar)) return true;
-        return true;
-      });
-
-      refinedSection.hidden = false;
-      renderResults(refinedContainer, filtered);
-
-      const remainingAmb = detectAmbiguities(filtered);
-      refinementArea.innerHTML = '';
-      if (remainingAmb.length > 0) {
-        currentResults = filtered;
-        renderRefinement(remainingAmb);
-      }
-    }
-
-    // --- Util ---
-    function escapeHtml(str) {
-      const div = document.createElement('div');
-      div.textContent = str;
-      return div.innerHTML;
-    }
-
-    // --- Boot ---
-    init();
+    <script type="module">
+    import { initApp } from './app.mjs';
+    initApp();
   </script>
 </body>
 </html>
