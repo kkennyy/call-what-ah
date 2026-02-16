@@ -465,6 +465,28 @@
       opacity: 0.9;
     }
 
+    /* Pinyin below characters */
+    .chip-text {
+      display: flex;
+      gap: 2px;
+      justify-content: center;
+    }
+    .char-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .char-col .char {
+      line-height: 1.25;
+    }
+    .char-col .py {
+      font-size: 0.52rem;
+      font-weight: 500;
+      opacity: 0.5;
+      line-height: 1.3;
+      letter-spacing: 0;
+    }
+
     .results-note {
       text-align: center;
       font-size: 0.75rem;
@@ -688,6 +710,7 @@
     let connector = '';
     let chain = [];
     let currentResults = [];
+    let pinyinFn = null;
     const cache = new Map();
     const MAX_CACHE = 200;
 
@@ -715,6 +738,14 @@
         document.querySelector('main').innerHTML =
           '<p class="loading">Failed to load step data. Please serve this page from a web server (not file://).</p>';
         return;
+      }
+
+      // Load pinyin library (non-blocking, graceful fallback)
+      try {
+        const mod = await import('https://cdn.jsdelivr.net/npm/pinyin-pro/+esm');
+        pinyinFn = mod.pinyin;
+      } catch (e) {
+        console.warn('Pinyin library unavailable, showing characters only');
       }
 
       addStepBtn.addEventListener('click', () => {
@@ -876,7 +907,33 @@
         chip.type = 'button';
         chip.className = 'chip';
         chip.style.animationDelay = (idx * 0.06) + 's';
-        chip.innerHTML = escapeHtml(term) + '<span class="copy-hint">copy</span>';
+
+        const textSpan = document.createElement('span');
+        textSpan.className = 'chip-text';
+        const chars = [...term];
+        const pinyinArr = pinyinFn ? pinyinFn(term, { type: 'array' }) : [];
+        chars.forEach((ch, ci) => {
+          const col = document.createElement('span');
+          col.className = 'char-col';
+          const charEl = document.createElement('span');
+          charEl.className = 'char';
+          charEl.textContent = ch;
+          col.appendChild(charEl);
+          if (pinyinArr[ci]) {
+            const pyEl = document.createElement('span');
+            pyEl.className = 'py';
+            pyEl.textContent = pinyinArr[ci];
+            col.appendChild(pyEl);
+          }
+          textSpan.appendChild(col);
+        });
+        chip.appendChild(textSpan);
+
+        const hint = document.createElement('span');
+        hint.className = 'copy-hint';
+        hint.textContent = 'copy';
+        chip.appendChild(hint);
+
         chip.addEventListener('click', () => copyTerm(chip, term));
         chipsDiv.appendChild(chip);
       });
