@@ -600,21 +600,35 @@
     /* ============== REFINEMENT ============== */
     .refine-panel {
       background: var(--refine-bg);
-      border: 1.5px solid var(--refine-border);
+      border: 2px solid var(--accent);
       border-radius: var(--radius);
-      padding: 18px 20px;
-      margin-top: 14px;
-      box-shadow: var(--shadow-sm);
-      animation: fadeInUp 0.35s ease-out both;
+      padding: 20px 22px;
+      margin-bottom: 10px;
+      box-shadow: 0 0 0 3px rgba(139, 35, 35, 0.08), var(--shadow-sm);
+      animation: fadeInUp 0.35s ease-out both, subtlePulse 2s ease-in-out 0.5s 1;
     }
     .refine-panel[hidden] { display: none; }
 
+    @keyframes subtlePulse {
+      0%, 100% { box-shadow: 0 0 0 3px rgba(139, 35, 35, 0.08), var(--shadow-sm); }
+      50% { box-shadow: 0 0 0 6px rgba(139, 35, 35, 0.13), var(--shadow-sm); }
+    }
+
+    .refine-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+
     .refine-question {
-      font-size: 0.92rem;
+      font-size: 0.94rem;
       font-weight: 600;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
       color: var(--text);
-      line-height: 1.4;
+      line-height: 1.45;
     }
 
     .refine-options {
@@ -625,7 +639,7 @@
     .refine-btn {
       flex: 1;
       min-width: 120px;
-      padding: 11px 20px;
+      padding: 12px 20px;
       font-size: 0.88rem;
       font-family: 'Figtree', system-ui, sans-serif;
       font-weight: 600;
@@ -761,6 +775,36 @@
       <button type="button" class="btn-add" id="add-step-btn">+ Add step</button>
     </div>
 
+    <!-- Chain preview -->
+    <div class="card" id="preview-section" hidden>
+      <div class="card-label">Chinese chain</div>
+      <div class="preview" id="chain-preview"></div>
+    </div>
+
+    <!-- Refinement (above results so mobile users see questions first) -->
+    <div id="refinement-area" aria-live="polite"></div>
+
+    <!-- Results -->
+    <div class="results-showcase" id="results-section" hidden>
+      <div class="card-label">Result</div>
+      <div class="result-heading-row">
+        <div class="result-subtitle">Recommended (your dialect)</div>
+        <span class="tooltip-wrap" id="tooltip-why">
+          <button type="button" class="tooltip-hint" aria-expanded="false" aria-controls="tooltip-why-body">Why multiple?</button>
+          <span class="tooltip-body" id="tooltip-why-body" role="tooltip">Different families and dialects use different address terms. Choose what your family uses, or pin a specific term below.</span>
+        </span>
+      </div>
+      <div class="results-area" id="recommended-container" aria-live="polite"></div>
+      <button type="button" class="pin-btn" id="pin-term-btn" hidden>
+        Pin my family's term
+        <span class="toggle-hint">- save as your preferred address</span>
+      </button>
+      <div class="result-heading-row" id="alternatives-heading" style="margin-top:14px" hidden>
+        <div class="result-subtitle">Also acceptable</div>
+      </div>
+      <div class="results-area" id="results-container" aria-live="polite"></div>
+    </div>
+
     <!-- Settings: dialect + reverse toggle -->
     <div class="card">
       <div class="card-label">Settings</div>
@@ -778,37 +822,6 @@
         </label>
       </div>
     </div>
-
-    <!-- Chain preview -->
-    <div class="card" id="preview-section" hidden>
-      <div class="card-label">Chinese chain</div>
-      <div class="preview" id="chain-preview"></div>
-    </div>
-
-    <!-- Results -->
-    <div class="results-showcase" id="results-section" hidden>
-      <div class="card-label">Result</div>
-      <div class="result-heading-row">
-        <div class="result-subtitle">Recommended (your dialect)</div>
-        <span class="tooltip-wrap" id="tooltip-why">
-          <button type="button" class="tooltip-hint" aria-expanded="false" aria-controls="tooltip-why-body">Why multiple?</button>
-          <span class="tooltip-body" id="tooltip-why-body" role="tooltip">Different families and dialects use different address terms. Choose what your family uses, or pin a specific term below.</span>
-        </span>
-      </div>
-      <div class="results-area" id="recommended-container" aria-live="polite"></div>
-      <button type="button" class="pin-btn" id="pin-term-btn" disabled>
-        Pin my family's term
-        <span class="toggle-hint">- save as your preferred address</span>
-      </button>
-      <div class="result-heading-row" style="margin-top:14px">
-        <div class="result-subtitle">Also acceptable</div>
-      </div>
-      <div class="results-area" id="results-container" aria-live="polite"></div>
-      <div class="results-note" id="sources-note"></div>
-    </div>
-
-    <!-- Refinement -->
-    <div id="refinement-area" aria-live="polite"></div>
 
     <footer>
       <div class="footer-divider"></div>

@@ -241,7 +241,7 @@ function renderRecommended(selection, conceptId) {
     empty.className = 'results-empty';
     empty.textContent = 'Need more details before recommending a single term.';
     dom.recommendedContainer.appendChild(empty);
-    dom.pinTermBtn.disabled = true;
+    dom.pinTermBtn.hidden = true;
     dom.pinTermBtn.dataset.term = '';
     dom.pinTermBtn.dataset.conceptId = conceptId || '';
     return;
@@ -252,11 +252,7 @@ function renderRecommended(selection, conceptId) {
   chips.appendChild(renderTermChip(selection.recommended));
   dom.recommendedContainer.appendChild(chips);
 
-  const meta = document.createElement('div');
-  meta.className = 'results-note';
-  meta.textContent = `Confidence: ${selection.confidence} (${selection.provenance.replace(/_/g, ' ')})`;
-  dom.recommendedContainer.appendChild(meta);
-
+  dom.pinTermBtn.hidden = false;
   dom.pinTermBtn.disabled = false;
   dom.pinTermBtn.dataset.term = selection.recommended;
   dom.pinTermBtn.dataset.conceptId = conceptId;
@@ -265,12 +261,12 @@ function renderRecommended(selection, conceptId) {
 function renderAlternatives(alternatives) {
   dom.resultsContainer.innerHTML = '';
   if (!alternatives.length) {
-    const empty = document.createElement('div');
-    empty.className = 'results-empty';
-    empty.textContent = 'No alternatives available.';
-    dom.resultsContainer.appendChild(empty);
+    dom.alternativesHeading.hidden = true;
+    dom.resultsContainer.hidden = true;
     return;
   }
+  dom.alternativesHeading.hidden = false;
+  dom.resultsContainer.hidden = false;
   const chips = document.createElement('div');
   chips.className = 'chips';
   alternatives.forEach((term, idx) => chips.appendChild(renderTermChip(term, idx)));
@@ -282,6 +278,11 @@ function renderDisambiguation(questions) {
   questions.forEach((q) => {
     const panel = document.createElement('div');
     panel.className = 'refine-panel';
+
+    const label = document.createElement('div');
+    label.className = 'refine-label';
+    label.textContent = 'Needs your input';
+    panel.appendChild(label);
 
     const title = document.createElement('div');
     title.className = 'refine-question';
@@ -307,6 +308,10 @@ function renderDisambiguation(questions) {
 
     dom.refinementArea.appendChild(panel);
   });
+
+  if (questions.length > 0) {
+    dom.refinementArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
 }
 
 function update() {
@@ -349,15 +354,6 @@ function update() {
     ...baseline
   ]).filter((term) => term !== selection.recommended);
 
-  dom.resultsSection.hidden = false;
-  renderRecommended(selection, conceptInfo.conceptId);
-  renderAlternatives(acceptable);
-
-  const hasMultiple = acceptable.length > 0;
-  dom.sourcesNote.textContent = hasMultiple
-    ? 'Different families and dialects use different address terms; choose what your family uses.'
-    : 'Single deterministic recommendation available for current details.';
-
   const questions = getDisambiguationQuestions({
     chain: state.chain,
     stepsById,
@@ -365,6 +361,10 @@ function update() {
     reverseInfo: conceptInfo
   });
   renderDisambiguation(questions);
+
+  dom.resultsSection.hidden = false;
+  renderRecommended(selection, conceptInfo.conceptId);
+  renderAlternatives(acceptable);
 }
 
 function wireEvents() {
@@ -426,7 +426,7 @@ function assignDomRefs() {
   dom.refinementArea = document.getElementById('refinement-area');
   dom.dialectSelect = document.getElementById('dialect-select');
   dom.pinTermBtn = document.getElementById('pin-term-btn');
-  dom.sourcesNote = document.getElementById('sources-note');
+  dom.alternativesHeading = document.getElementById('alternatives-heading');
 }
 
 export async function initApp() {
