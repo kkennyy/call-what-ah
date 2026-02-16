@@ -1,0 +1,140 @@
+{
+  "meta": {
+    "name": "Mandarin kinship step tokens (English UI -> Chinese token)",
+    "version": "1.0.0",
+    "createdAt": "2026-02-16",
+    "notes": [
+      "Designed to be used with the deterministic relationship.js engine (mumuy/relationship).",
+      "UI should build a relationship chain step-by-step (no NLP).",
+      "Join zhToken with the Chinese possessive connector '的' to form relationship.js input text."
+    ]
+  },
+  "requiredUserInputs": {
+    "sex": {
+      "description": "User gender affects some in-law terms.",
+      "options": [
+        { "value": -1, "label": "Unknown / prefer not to say" },
+        { "value": 1, "label": "Male" },
+        { "value": 0, "label": "Female" }
+      ]
+    }
+  },
+  "numerals": {
+    "1": "一",
+    "2": "二",
+    "3": "三",
+    "4": "四",
+    "5": "五",
+    "6": "六",
+    "7": "七",
+    "8": "八",
+    "9": "九",
+    "10": "十"
+  },
+  "steps": [
+    {
+      "id": "father",
+      "enLabel": "father (dad)",
+      "zhToken": "爸爸",
+      "relationshipJsSelectorHint": "f",
+      "rankable": false,
+      "notes": ["Used as a chain step, eg: 爸爸的爸爸 -> 爷爷"]
+    },
+    {
+      "id": "mother",
+      "enLabel": "mother (mum)",
+      "zhToken": "妈妈",
+      "relationshipJsSelectorHint": "m",
+      "rankable": false
+    },
+    {
+      "id": "olderBrother",
+      "enLabel": "older brother",
+      "zhToken": "哥哥",
+      "relationshipJsSelectorHint": "ob",
+      "rankable": true,
+      "rankExample": "二哥"
+    },
+    {
+      "id": "youngerBrother",
+      "enLabel": "younger brother",
+      "zhToken": "弟弟",
+      "relationshipJsSelectorHint": "lb",
+      "rankable": true,
+      "rankExample": "三弟"
+    },
+    {
+      "id": "olderSister",
+      "enLabel": "older sister",
+      "zhToken": "姐姐",
+      "relationshipJsSelectorHint": "os",
+      "rankable": true,
+      "rankExample": "大姐"
+    },
+    {
+      "id": "youngerSister",
+      "enLabel": "younger sister",
+      "zhToken": "妹妹",
+      "relationshipJsSelectorHint": "ls",
+      "rankable": true,
+      "rankExample": "小妹"
+    },
+    {
+      "id": "brotherAgeUnknown",
+      "enLabel": "brother (age unknown)",
+      "zhToken": "兄弟",
+      "relationshipJsSelectorHint": "xb",
+      "rankable": false,
+      "notes": [
+        "Use when user cannot determine older vs younger.",
+        "relationship.js will typically return multiple valid outputs (eg 伯父 and 叔叔)."
+      ]
+    },
+    {
+      "id": "sisterAgeUnknown",
+      "enLabel": "sister (age unknown)",
+      "zhToken": "姐妹",
+      "relationshipJsSelectorHint": "xs",
+      "rankable": false
+    },
+    {
+      "id": "son",
+      "enLabel": "son",
+      "zhToken": "儿子",
+      "relationshipJsSelectorHint": "s",
+      "rankable": false
+    },
+    {
+      "id": "daughter",
+      "enLabel": "daughter",
+      "zhToken": "女儿",
+      "relationshipJsSelectorHint": "d",
+      "rankable": false
+    },
+    {
+      "id": "husband",
+      "enLabel": "husband",
+      "zhToken": "老公",
+      "relationshipJsSelectorHint": "h",
+      "rankable": false,
+      "notes": [
+        "Some kinship terms depend on the user's sex. If user sex is unknown, outputs may be a set."
+      ]
+    },
+    {
+      "id": "wife",
+      "enLabel": "wife",
+      "zhToken": "老婆",
+      "relationshipJsSelectorHint": "w",
+      "rankable": false
+    }
+  ],
+  "buildText": {
+    "connector": "的",
+    "rule": "Join selected zhToken values with '的'. If a step is rankable and a rank is supplied, prefix the zhToken with the Chinese numeral (eg 2 + 哥哥 -> 二哥).",
+    "example": {
+      "enChain": ["father", "olderBrother", "son"],
+      "zhText": "爸爸的哥哥的儿子"
+    }
+  }
+}

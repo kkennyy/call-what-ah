@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Call What Ah? - Mandarin Kinship Address Finder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #F4EDE4;
+      --surface: #FFFDF8;
+      --primary: #B8343A;
+      --primary-dark: #8C2328;
+      --primary-light: #D94F55;
+      --accent: #C7944A;
+      --accent-light: #E8D5B0;
+      --text: #1C1815;
+      --text-muted: #887E72;
+      --border: #DDD4C8;
+      --chip-bg: #FCECED;
+      --chip-text: #8C2328;
+      --chip-hover: #F8D5D7;
+      --success: #2D8A56;
+      --success-bg: #D4EDDF;
+      --refine-bg: #FFF8ED;
+      --refine-border: #D4A04A;
+      --danger: #C44;
+      --shadow-sm: 0 1px 3px rgba(28,24,21,0.06), 0 1px 2px rgba(28,24,21,0.04);
+      --shadow-md: 0 4px 16px rgba(28,24,21,0.08), 0 2px 4px rgba(28,24,21,0.04);
+      --shadow-lg: 0 12px 40px rgba(28,24,21,0.12), 0 4px 12px rgba(28,24,21,0.06);
+      --radius: 12px;
+      --radius-sm: 8px;
+      --radius-xs: 6px;
+      --max-width: 520px;
+    }
+
+    body {
+      font-family: 'Figtree', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+      min-height: 100dvh;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Subtle lattice background pattern */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.025;
+      background-image:
+        linear-gradient(45deg, var(--text) 1px, transparent 1px),
+        linear-gradient(-45deg, var(--text) 1px, transparent 1px);
+      background-size: 32px 32px;
+      z-index: 0;
+    }
+
+    main {
+      position: relative;
+      z-index: 1;
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 12px 16px 24px;
+    }
+
+    /* ============== HEADER ============== */
+    .header {
+      text-align: center;
+      padding: 32px 0 12px;
+      animation: fadeIn 0.6s ease-out both;
+    }
+
+    .header-inner {
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    /* Decorative Chinese seal/chop */
+    .seal {
+      width: 44px;
+      height: 44px;
+      border: 3px solid var(--primary);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--primary);
+      transform: rotate(-6deg);
+      flex-shrink: 0;
+      position: relative;
+      line-height: 1;
+    }
+    .seal::after {
+      content: '';
+      position: absolute;
+      inset: 2px;
+      border: 1px solid var(--primary);
+      border-radius: 2px;
+      opacity: 0.4;
+    }
+
+    .header h1 {
+      font-family: 'Young Serif', Georgia, serif;
+      font-size: 2rem;
+      font-weight: 400;
+      letter-spacing: -0.01em;
+      color: var(--text);
+      line-height: 1.15;
+    }
+
+    .header .subtitle {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      margin-top: 6px;
+      font-weight: 400;
+      letter-spacing: 0.01em;
+    }
+
+    /* ============== SECTIONS / CARDS ============== */
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      margin-top: 14px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid rgba(0,0,0,0.03);
+      animation: fadeInUp 0.45s ease-out both;
+    }
+    .card:nth-child(2) { animation-delay: 0.06s; }
+    .card:nth-child(3) { animation-delay: 0.12s; }
+    .card:nth-child(4) { animation-delay: 0.18s; }
+
+    .card-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .card-label::before {
+      content: '';
+      width: 3px;
+      height: 12px;
+      background: var(--primary);
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    /* ============== SEX SELECTOR ============== */
+    .seg-control {
+      display: flex;
+      gap: 0;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      background: var(--bg);
+      padding: 3px;
+    }
+    .seg-control input { display: none; }
+    .seg-control label {
+      flex: 1;
+      text-align: center;
+      padding: 10px 8px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      color: var(--text-muted);
+      border-radius: var(--radius-xs);
+      user-select: none;
+    }
+    .seg-control input:checked + label {
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: var(--shadow-sm);
+    }
+    .seg-control label:hover:not(:has(+ input:checked)) {
+      color: var(--text);
+    }
+    /* Hover fix for radio labels (CSS :has not supported everywhere) */
+    .seg-control label:hover {
+      color: var(--text);
+    }
+
+    /* ============== CHAIN BUILDER ============== */
+    .step-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      animation: fadeInUp 0.3s ease-out both;
+    }
+
+    .step-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+
+    .step-row select {
+      flex: 1;
+      min-width: 0;
+      padding: 11px 14px;
+      font-size: 0.9rem;
+      font-family: 'Figtree', system-ui, sans-serif;
+      font-weight: 500;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-xs);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      appearance: auto;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .step-row select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(184, 52, 58, 0.12);
+    }
+    .step-row select:hover {
+      border-color: var(--accent);
+    }
+
+    .rank-select {
+      width: 68px;
+      flex-shrink: 0;
+      padding: 11px 8px;
+      font-size: 0.85rem;
+      font-family: 'Figtree', system-ui, sans-serif;
+      font-weight: 500;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-xs);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .rank-select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(184, 52, 58, 0.12);
+    }
+
+    .btn-remove {
+      width: 32px;
+      height: 32px;
+      flex-shrink: 0;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      cursor: pointer;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      opacity: 0.5;
+    }
+    .btn-remove:hover {
+      background: #fde8e8;
+      color: var(--danger);
+      opacity: 1;
+    }
+
+    .btn-add {
+      width: 100%;
+      padding: 12px;
+      font-size: 0.85rem;
+      font-family: 'Figtree', system-ui, sans-serif;
+      font-weight: 600;
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-xs);
+      background: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 2px;
+      letter-spacing: 0.02em;
+    }
+    .btn-add:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: rgba(184, 52, 58, 0.03);
+    }
+
+    /* ============== REVERSE TOGGLE ============== */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .toggle-track {
+      position: relative;
+      width: 44px;
+      height: 26px;
+      flex-shrink: 0;
+    }
+    .toggle-track input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: var(--border);
+      border-radius: 999px;
+      transition: background 0.25s;
+    }
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      left: 3px;
+      bottom: 3px;
+      background: white;
+      border-radius: 50%;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .toggle-track input:checked + .toggle-slider {
+      background: var(--primary);
+    }
+    .toggle-track input:checked + .toggle-slider::before {
+      transform: translateX(18px);
+    }
+    .toggle-track input:focus-visible + .toggle-slider {
+      box-shadow: 0 0 0 3px rgba(184, 52, 58, 0.2);
+    }
+    .toggle-label {
+      font-size: 0.88rem;
+      font-weight: 500;
+      cursor: pointer;
+      user-select: none;
+      color: var(--text);
+    }
+    .toggle-hint {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    /* ============== CHAIN PREVIEW ============== */
+    .preview {
+      text-align: center;
+      padding: 4px 0;
+    }
+    .preview .zh-text {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: 0.08em;
+      display: block;
+    }
+
+    /* ============== RESULTS ============== */
+    .results-area {
+      min-height: 48px;
+    }
+    .results-showcase {
+      background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+      border-radius: var(--radius);
+      padding: 28px 20px 24px;
+      margin-top: 14px;
+      box-shadow: var(--shadow-md);
+      animation: fadeInUp 0.45s ease-out both;
+      position: relative;
+      overflow: hidden;
+    }
+    /* Decorative corner ornaments */
+    .results-showcase::before,
+    .results-showcase::after {
+      content: '';
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      border: 2px solid rgba(255,255,255,0.12);
+      pointer-events: none;
+    }
+    .results-showcase::before {
+      top: 10px; left: 10px;
+      border-right: none; border-bottom: none;
+    }
+    .results-showcase::after {
+      bottom: 10px; right: 10px;
+      border-left: none; border-top: none;
+    }
+    .results-showcase .card-label {
+      color: rgba(255,255,255,0.65);
+    }
+    .results-showcase .card-label::before {
+      background: var(--accent);
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 22px;
+      font-size: 1.4rem;
+      font-weight: 700;
+      background: rgba(255,255,255,0.95);
+      color: var(--primary-dark);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      user-select: none;
+      border: none;
+      font-family: inherit;
+      box-shadow: var(--shadow-sm);
+      letter-spacing: 0.04em;
+    }
+    .chip:hover {
+      transform: translateY(-2px) scale(1.04);
+      box-shadow: var(--shadow-md);
+      background: #fff;
+    }
+    .chip:active {
+      transform: translateY(0) scale(0.97);
+    }
+    .chip.copied {
+      background: var(--success-bg);
+      color: var(--success);
+    }
+    .chip .copy-hint {
+      font-size: 0.6rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      opacity: 0.5;
+    }
+    .chip.copied .copy-hint {
+      opacity: 0.9;
+    }
+
+    .results-note {
+      text-align: center;
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.5);
+      margin-top: 12px;
+      font-weight: 500;
+    }
+    .results-empty {
+      text-align: center;
+      color: rgba(255,255,255,0.6);
+      font-size: 0.9rem;
+      padding: 12px 0;
+    }
+
+    /* ============== REFINEMENT ============== */
+    .refine-panel {
+      background: var(--refine-bg);
+      border: 1.5px solid var(--refine-border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      margin-top: 14px;
+      box-shadow: var(--shadow-sm);
+      animation: fadeInUp 0.35s ease-out both;
+    }
+    .refine-panel[hidden] { display: none; }
+
+    .refine-question {
+      font-size: 0.92rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: var(--text);
+      line-height: 1.4;
+    }
+
+    .refine-options {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .refine-btn {
+      flex: 1;
+      min-width: 120px;
+      padding: 11px 20px;
+      font-size: 0.88rem;
+      font-family: 'Figtree', system-ui, sans-serif;
+      font-weight: 600;
+      border: 2px solid var(--accent);
+      border-radius: var(--radius-xs);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .refine-btn:hover {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Refined results use white card style */
+    .refined-section {
+      margin-top: 14px;
+    }
+    .refined-section[hidden] { display: none; }
+    .refined-section .chips {
+      padding: 4px 0;
+    }
+    .refined-section .chip {
+      background: var(--chip-bg);
+      color: var(--chip-text);
+    }
+    .refined-section .chip:hover {
+      background: var(--chip-hover);
+    }
+    .refined-section .chip.copied {
+      background: var(--success-bg);
+      color: var(--success);
+    }
+    .refined-section .results-note {
+      color: var(--text-muted);
+    }
+
+    /* ============== FOOTER ============== */
+    footer {
+      text-align: center;
+      padding: 28px 0 20px;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      letter-spacing: 0.01em;
+    }
+    footer a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    footer a:hover { text-decoration: underline; }
+    .footer-divider {
+      width: 32px;
+      height: 2px;
+      background: var(--border);
+      margin: 0 auto 12px;
+      border-radius: 1px;
+    }
+
+    /* ============== LOADING ============== */
+    .loading {
+      text-align: center;
+      color: var(--text-muted);
+      padding: 48px 20px;
+      font-size: 0.9rem;
+    }
+
+    /* ============== ANIMATIONS ============== */
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ============== RESPONSIVE ============== */
+    @media (max-width: 400px) {
+      .header h1 { font-size: 1.65rem; }
+      .seal { width: 38px; height: 38px; font-size: 1.1rem; }
+      .card { padding: 16px; }
+      .chip { font-size: 1.2rem; padding: 10px 18px; }
+      .results-showcase { padding: 22px 16px 20px; }
+      .refine-btn { min-width: 100px; }
+    }
+
+    /* Reduce motion for accessibility */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="header">
+      <div class="header-inner">
+        <div class="seal" aria-hidden="true">叫</div>
+        <div>
+          <h1>Call What Ah?</h1>
+          <p class="subtitle">Mandarin kinship address finder</p>
+        </div>
+      </div>
+    </header>
+
+    <!-- Sex selector -->
+    <div class="card">
+      <div class="card-label">I am</div>
+      <div class="seg-control" id="sex-selector">
+        <input type="radio" name="sex" id="sex-male" value="1">
+        <label for="sex-male">Male</label>
+        <input type="radio" name="sex" id="sex-female" value="0">
+        <label for="sex-female">Female</label>
+        <input type="radio" name="sex" id="sex-unknown" value="-1" checked>
+        <label for="sex-unknown">Unknown</label>
+      </div>
+    </div>
+
+    <!-- Chain builder -->
+    <div class="card">
+      <div class="card-label">Relationship chain</div>
+      <div id="chain-container"></div>
+      <button type="button" class="btn-add" id="add-step-btn">+ Add step</button>
+    </div>
+
+    <!-- Reverse toggle -->
+    <div class="card">
+      <div class="toggle-row">
+        <div class="toggle-track">
+          <input type="checkbox" id="reverse-toggle">
+          <span class="toggle-slider"></span>
+        </div>
+        <label class="toggle-label" for="reverse-toggle">
+          Reverse lookup
+          <span class="toggle-hint">- how they address me</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Chain preview -->
+    <div class="card" id="preview-section" hidden>
+      <div class="card-label">Chinese chain</div>
+      <div class="preview" id="chain-preview"></div>
+    </div>
+
+    <!-- Results -->
+    <div class="results-showcase" id="results-section" hidden>
+      <div class="card-label">Result</div>
+      <div class="results-area" id="results-container" aria-live="polite"></div>
+    </div>
+
+    <!-- Refinement -->
+    <div id="refinement-area" aria-live="polite"></div>
+
+    <!-- Refined results -->
+    <div class="card refined-section" id="refined-section" hidden>
+      <div class="card-label">Refined result</div>
+      <div class="chips" id="refined-container"></div>
+    </div>
+
+    <footer>
+      <div class="footer-divider"></div>
+      Powered by <a href="https://github.com/mumuy/relationship" target="_blank" rel="noopener">relationship.js</a> &middot; MIT License
+    </footer>
+  </main>
+
+  <script type="module">
+    import relationship from './relationship.min.mjs';
+
+    // --- State ---
+    let stepsData = null;
+    let numerals = null;
+    let connector = '';
+    let chain = [];
+    let currentResults = [];
+    const cache = new Map();
+    const MAX_CACHE = 200;
+
+    // --- DOM refs ---
+    const chainContainer = document.getElementById('chain-container');
+    const addStepBtn = document.getElementById('add-step-btn');
+    const reverseToggle = document.getElementById('reverse-toggle');
+    const previewSection = document.getElementById('preview-section');
+    const chainPreview = document.getElementById('chain-preview');
+    const resultsSection = document.getElementById('results-section');
+    const resultsContainer = document.getElementById('results-container');
+    const refinementArea = document.getElementById('refinement-area');
+    const refinedSection = document.getElementById('refined-section');
+    const refinedContainer = document.getElementById('refined-container');
+
+    // --- Init ---
+    async function init() {
+      try {
+        const resp = await fetch('./kinship_en_steps.json');
+        const data = await resp.json();
+        stepsData = data.steps;
+        numerals = data.numerals;
+        connector = data.buildText.connector;
+      } catch (e) {
+        document.querySelector('main').innerHTML =
+          '<p class="loading">Failed to load step data. Please serve this page from a web server (not file://).</p>';
+        return;
+      }
+
+      addStepBtn.addEventListener('click', () => {
+        chain.push({ stepId: stepsData[0].id, rank: null });
+        renderChain();
+        update();
+      });
+
+      document.getElementById('sex-selector').addEventListener('change', () => update());
+      reverseToggle.addEventListener('change', () => update());
+
+      // Start with one step
+      chain.push({ stepId: stepsData[0].id, rank: null });
+      renderChain();
+    }
+
+    // --- Chain rendering ---
+    function renderChain() {
+      chainContainer.innerHTML = '';
+      chain.forEach((entry, i) => {
+        const step = stepsData.find(s => s.id === entry.stepId);
+        const row = document.createElement('div');
+        row.className = 'step-row';
+
+        const num = document.createElement('span');
+        num.className = 'step-num';
+        num.textContent = i + 1;
+        row.appendChild(num);
+
+        const sel = document.createElement('select');
+        sel.setAttribute('aria-label', 'Relationship step ' + (i + 1));
+        stepsData.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = s.enLabel;
+          if (s.id === entry.stepId) opt.selected = true;
+          sel.appendChild(opt);
+        });
+        sel.addEventListener('change', () => {
+          chain[i].stepId = sel.value;
+          const newStep = stepsData.find(s => s.id === sel.value);
+          if (!newStep.rankable) chain[i].rank = null;
+          renderChain();
+          update();
+        });
+        row.appendChild(sel);
+
+        if (step && step.rankable) {
+          const rankSel = document.createElement('select');
+          rankSel.className = 'rank-select';
+          rankSel.setAttribute('aria-label', 'Rank for step ' + (i + 1));
+          const noRank = document.createElement('option');
+          noRank.value = '';
+          noRank.textContent = '#';
+          rankSel.appendChild(noRank);
+          for (let r = 1; r <= 10; r++) {
+            const opt = document.createElement('option');
+            opt.value = r;
+            opt.textContent = r;
+            if (entry.rank === r) opt.selected = true;
+            rankSel.appendChild(opt);
+          }
+          rankSel.addEventListener('change', () => {
+            chain[i].rank = rankSel.value ? parseInt(rankSel.value) : null;
+            update();
+          });
+          row.appendChild(rankSel);
+        }
+
+        if (chain.length > 1) {
+          const removeBtn = document.createElement('button');
+          removeBtn.type = 'button';
+          removeBtn.className = 'btn-remove';
+          removeBtn.setAttribute('aria-label', 'Remove step ' + (i + 1));
+          removeBtn.innerHTML = '&times;';
+          removeBtn.addEventListener('click', () => {
+            chain.splice(i, 1);
+            renderChain();
+            update();
+          });
+          row.appendChild(removeBtn);
+        }
+
+        chainContainer.appendChild(row);
+      });
+    }
+
+    // --- Build Chinese text ---
+    function buildChineseText() {
+      return chain.map(entry => {
+        const step = stepsData.find(s => s.id === entry.stepId);
+        if (!step) return '';
+        if (entry.rank && step.rankable && numerals[String(entry.rank)]) {
+          const numChar = numerals[String(entry.rank)];
+          const baseChar = step.zhToken.charAt(0);
+          return numChar + baseChar;
+        }
+        return step.zhToken;
+      }).join(connector);
+    }
+
+    // --- Engine lookup with cache ---
+    function lookup(text, sex, reverse) {
+      const key = `${sex}|${text}|${reverse}`;
+      if (cache.has(key)) return cache.get(key);
+      const raw = relationship({ text, sex, type: 'default', reverse, mode: 'default', optimal: false });
+      const results = [...new Set(raw || [])];
+      if (cache.size >= MAX_CACHE) cache.delete(cache.keys().next().value);
+      cache.set(key, results);
+      return results;
+    }
+
+    // --- Get current sex ---
+    function getSex() {
+      const checked = document.querySelector('input[name="sex"]:checked');
+      return checked ? parseInt(checked.value) : -1;
+    }
+
+    // --- Update everything ---
+    function update() {
+      refinementArea.innerHTML = '';
+      refinedSection.hidden = true;
+
+      const zhText = buildChineseText();
+      if (!zhText) {
+        previewSection.hidden = true;
+        resultsSection.hidden = true;
+        return;
+      }
+
+      previewSection.hidden = false;
+      chainPreview.innerHTML = '<span class="zh-text">' + escapeHtml(zhText) + '</span>';
+
+      const sex = getSex();
+      const reverse = reverseToggle.checked;
+      currentResults = lookup(zhText, sex, reverse);
+
+      resultsSection.hidden = false;
+      renderResults(resultsContainer, currentResults);
+
+      const ambiguities = detectAmbiguities(currentResults);
+      if (ambiguities.length > 0) {
+        renderRefinement(ambiguities);
+      }
+    }
+
+    // --- Render result chips ---
+    function renderResults(container, results) {
+      container.innerHTML = '';
+      if (results.length === 0) {
+        container.innerHTML = '<div class="results-empty">No results found for this chain.</div>';
+        return;
+      }
+
+      const chipsDiv = document.createElement('div');
+      chipsDiv.className = 'chips';
+      results.forEach((term, idx) => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'chip';
+        chip.style.animationDelay = (idx * 0.06) + 's';
+        chip.innerHTML = escapeHtml(term) + '<span class="copy-hint">copy</span>';
+        chip.addEventListener('click', () => copyTerm(chip, term));
+        chipsDiv.appendChild(chip);
+      });
+      container.appendChild(chipsDiv);
+
+      if (results.length > 1) {
+        const note = document.createElement('div');
+        note.className = 'results-note';
+        note.textContent = 'Multiple valid terms \u2014 tap to copy. Refine below if available.';
+        container.appendChild(note);
+      } else {
+        const note = document.createElement('div');
+        note.className = 'results-note';
+        note.textContent = 'Tap to copy.';
+        container.appendChild(note);
+      }
+    }
+
+    // --- Copy to clipboard ---
+    async function copyTerm(chipEl, term) {
+      try {
+        await navigator.clipboard.writeText(term);
+      } catch {
+        const ta = document.createElement('textarea');
+        ta.value = term;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      chipEl.classList.add('copied');
+      const hint = chipEl.querySelector('.copy-hint');
+      if (hint) hint.textContent = 'copied!';
+      setTimeout(() => {
+        chipEl.classList.remove('copied');
+        if (hint) hint.textContent = 'copy';
+      }, 1200);
+    }
+
+    // --- Refinement detection ---
+    function detectAmbiguities(results) {
+      if (results.length <= 1) return [];
+      const ambiguities = [];
+
+      const hasGe = results.some(r => r.includes('哥'));
+      const hasDi = results.some(r => r.includes('弟'));
+      if (hasGe && hasDi) {
+        ambiguities.push({
+          id: 'older-younger-brother',
+          question: 'Is this person older or younger than the reference?',
+          options: [
+            { label: 'Older', keep: '哥', remove: '弟' },
+            { label: 'Younger', keep: '弟', remove: '哥' }
+          ]
+        });
+      }
+
+      const hasJie = results.some(r => r.includes('姐'));
+      const hasMei = results.some(r => r.includes('妹'));
+      if (hasJie && hasMei) {
+        ambiguities.push({
+          id: 'older-younger-sister',
+          question: 'Is this person older or younger than the reference?',
+          options: [
+            { label: 'Older', keep: '姐', remove: '妹' },
+            { label: 'Younger', keep: '妹', remove: '姐' }
+          ]
+        });
+      }
+
+      const hasBo = results.some(r => r.includes('伯'));
+      const hasShu = results.some(r => r.includes('叔'));
+      if (hasBo && hasShu) {
+        ambiguities.push({
+          id: 'bo-shu',
+          question: "Is your father's brother older or younger than your father?",
+          options: [
+            { label: 'Older than father', keep: '伯', remove: '叔' },
+            { label: 'Younger than father', keep: '叔', remove: '伯' }
+          ]
+        });
+      }
+
+      return ambiguities;
+    }
+
+    // --- Render refinement panel ---
+    function renderRefinement(ambiguities) {
+      refinementArea.innerHTML = '';
+      ambiguities.forEach(amb => {
+        const panel = document.createElement('div');
+        panel.className = 'refine-panel';
+
+        const q = document.createElement('div');
+        q.className = 'refine-question';
+        q.textContent = amb.question;
+        panel.appendChild(q);
+
+        const opts = document.createElement('div');
+        opts.className = 'refine-options';
+        amb.options.forEach(opt => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'refine-btn';
+          btn.textContent = opt.label;
+          btn.addEventListener('click', () => applyRefinement(opt.keep, opt.remove));
+          opts.appendChild(btn);
+        });
+        panel.appendChild(opts);
+        refinementArea.appendChild(panel);
+      });
+    }
+
+    // --- Apply refinement ---
+    function applyRefinement(keepChar, removeChar) {
+      const filtered = currentResults.filter(r => {
+        if (r.includes(removeChar) && !r.includes(keepChar)) return false;
+        if (r.includes(removeChar) && r.includes(keepChar)) return true;
+        return true;
+      });
+
+      refinedSection.hidden = false;
+      renderResults(refinedContainer, filtered);
+
+      const remainingAmb = detectAmbiguities(filtered);
+      refinementArea.innerHTML = '';
+      if (remainingAmb.length > 0) {
+        currentResults = filtered;
+        renderRefinement(remainingAmb);
+      }
+    }
+
+    // --- Util ---
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    // --- Boot ---
+    init();
+  </script>
+</body>
+</html>
