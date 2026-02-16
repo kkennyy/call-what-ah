@@ -8,6 +8,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    // Prevent flash of wrong theme on load
+    (function(){var t=localStorage.getItem('cwah.settings.theme');if(t)document.documentElement.dataset.theme=t;else if(matchMedia('(prefers-color-scheme:dark)').matches)document.documentElement.dataset.theme='dark'})();
+  </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -37,6 +41,33 @@
       --radius-sm: 8px;
       --radius-xs: 6px;
       --max-width: 520px;
+      color-scheme: light;
+    }
+
+    /* ============== DARK THEME ============== */
+    [data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #171411;
+      --surface: #242019;
+      --primary: #D94F55;
+      --primary-dark: #B8343A;
+      --primary-light: #E8686D;
+      --accent: #D4A55C;
+      --accent-light: #3E3526;
+      --text: #E6DED2;
+      --text-muted: #968E82;
+      --border: #3A3530;
+      --chip-bg: #382224;
+      --chip-text: #E8686D;
+      --chip-hover: #4A2C2F;
+      --success: #3DA466;
+      --success-bg: #1C3024;
+      --refine-bg: #28221A;
+      --refine-border: #D4A04A;
+      --danger: #E85555;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+      --shadow-md: 0 4px 16px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.3);
+      --shadow-lg: 0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.35);
     }
 
     body {
@@ -76,12 +107,79 @@
       text-align: center;
       padding: 32px 0 12px;
       animation: fadeIn 0.6s ease-out both;
+      position: relative;
     }
 
     .header-inner {
       display: inline-flex;
       align-items: center;
       gap: 14px;
+    }
+
+    /* ============== THEME TOGGLE ============== */
+    .theme-toggle {
+      position: absolute;
+      top: 36px;
+      right: 0;
+      width: 34px;
+      height: 34px;
+      border: 2px solid var(--border);
+      border-radius: 4px;
+      background: var(--surface);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--accent);
+      transform: rotate(4deg);
+      line-height: 1;
+      z-index: 5;
+      overflow: hidden;
+      padding: 0;
+      transition: border-color 0.3s, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .theme-toggle::after {
+      content: '';
+      position: absolute;
+      inset: 2px;
+      border: 1px solid var(--accent);
+      border-radius: 2px;
+      opacity: 0.3;
+      pointer-events: none;
+    }
+    .theme-toggle:hover {
+      border-color: var(--accent);
+      transform: rotate(0deg) scale(1.1);
+    }
+    .theme-toggle:active {
+      transform: rotate(0deg) scale(0.93);
+    }
+    .theme-toggle:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+    .theme-toggle .icon-sun,
+    .theme-toggle .icon-moon {
+      position: absolute;
+      transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+                  opacity 0.25s ease;
+    }
+    .theme-toggle .icon-moon {
+      opacity: 0;
+      transform: translateY(22px) rotate(-60deg);
+    }
+    [data-theme="dark"] .theme-toggle {
+      border-color: var(--accent);
+    }
+    [data-theme="dark"] .theme-toggle .icon-sun {
+      opacity: 0;
+      transform: translateY(-22px) rotate(60deg);
+    }
+    [data-theme="dark"] .theme-toggle .icon-moon {
+      opacity: 1;
+      transform: translateY(0) rotate(0deg);
     }
 
     /* Decorative Chinese seal/chop */
@@ -701,6 +799,28 @@
       border-radius: 1px;
     }
 
+    /* ============== DARK MODE OVERRIDES ============== */
+    [data-theme="dark"] .card {
+      border-color: rgba(255,255,255,0.05);
+    }
+    [data-theme="dark"] .btn-remove:hover {
+      background: rgba(232,85,85,0.15);
+    }
+    [data-theme="dark"] .results-showcase .chip {
+      background: rgba(255,255,255,0.1);
+      color: var(--text);
+    }
+    [data-theme="dark"] .results-showcase .chip:hover {
+      background: rgba(255,255,255,0.16);
+    }
+    [data-theme="dark"] .results-showcase .chip.copied {
+      background: var(--success-bg);
+      color: var(--success);
+    }
+    [data-theme="dark"] body::before {
+      opacity: 0.04;
+    }
+
     /* ============== LOADING ============== */
     .loading {
       text-align: center;
@@ -753,6 +873,10 @@
           <p class="subtitle">Mandarin kinship address finder</p>
         </div>
       </div>
+      <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">
+        <span class="icon-sun" aria-hidden="true">日</span>
+        <span class="icon-moon" aria-hidden="true">月</span>
+      </button>
     </header>
 
     <!-- Sex selector -->
@@ -832,6 +956,14 @@
   <script type="module">
     import { initApp } from './app.mjs';
     initApp();
+
+    // Theme toggle
+    document.getElementById('theme-toggle').addEventListener('click', () => {
+      const isDark = document.documentElement.dataset.theme === 'dark';
+      const next = isDark ? 'light' : 'dark';
+      document.documentElement.dataset.theme = next;
+      localStorage.setItem('cwah.settings.theme', next);
+    });
 
     // Tooltip toggle
     document.querySelectorAll('.tooltip-hint').forEach(btn => {
