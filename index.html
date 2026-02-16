@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Call What Ah? - Mandarin Kinship Address Finder</title>
+  <meta name="description" content="Find the correct Mandarin Chinese kinship address term for any family relationship. Supports multiple dialects and reverse lookups.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -187,10 +188,6 @@
       color: var(--text);
       box-shadow: var(--shadow-sm);
     }
-    .seg-control label:hover:not(:has(+ input:checked)) {
-      color: var(--text);
-    }
-    /* Hover fix for radio labels (CSS :has not supported everywhere) */
     .seg-control label:hover {
       color: var(--text);
     }
@@ -255,6 +252,7 @@
       background: var(--surface);
       color: var(--text);
       cursor: pointer;
+      appearance: auto;
       transition: border-color 0.2s, box-shadow 0.2s;
     }
     .rank-select:focus {
@@ -565,6 +563,40 @@
       opacity: 0.45;
       cursor: not-allowed;
     }
+    /* ============== TOOLTIP POPOVER ============== */
+    .tooltip-wrap {
+      position: relative;
+      display: inline-block;
+    }
+    .tooltip-body {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: calc(100% + 6px);
+      width: 220px;
+      padding: 10px 12px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      line-height: 1.45;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xs);
+      box-shadow: var(--shadow-md);
+      z-index: 10;
+    }
+    .tooltip-wrap.open .tooltip-body {
+      display: block;
+      animation: fadeInUp 0.2s ease-out both;
+    }
+
+    /* ============== SETTINGS DIVIDER ============== */
+    .settings-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 14px 0;
+    }
+
     /* ============== REFINEMENT ============== */
     .refine-panel {
       background: var(--refine-bg);
@@ -718,25 +750,23 @@
         <input type="radio" name="sex" id="sex-female" value="0">
         <label for="sex-female">Female</label>
         <input type="radio" name="sex" id="sex-unknown" value="-1" checked>
-        <label for="sex-unknown">Unknown</label>
+        <label for="sex-unknown">Either</label>
       </div>
     </div>
 
-            <!-- Chain builder -->
+    <!-- Chain builder -->
     <div class="card">
       <div class="card-label">Relationship chain</div>
       <div id="chain-container"></div>
       <button type="button" class="btn-add" id="add-step-btn">+ Add step</button>
     </div>
 
-    <!-- Dialect settings -->
+    <!-- Settings: dialect + reverse toggle -->
     <div class="card">
       <div class="card-label">Settings</div>
       <label class="settings-label" for="dialect-select">Family Dialect Preference</label>
       <select id="dialect-select" class="settings-select" aria-label="Family Dialect Preference"></select>
-    </div>
-    <!-- Reverse toggle -->
-    <div class="card">
+      <hr class="settings-divider">
       <div class="toggle-row">
         <div class="toggle-track">
           <input type="checkbox" id="reverse-toggle">
@@ -755,21 +785,21 @@
       <div class="preview" id="chain-preview"></div>
     </div>
 
-        <!-- Results -->
+    <!-- Results -->
     <div class="results-showcase" id="results-section" hidden>
       <div class="card-label">Result</div>
       <div class="result-heading-row">
         <div class="result-subtitle">Recommended (your dialect)</div>
-        <button
-          type="button"
-          class="tooltip-hint"
-          title="Different families and dialects use different address terms; choose what your family uses."
-        >
-          Why multiple?
-        </button>
+        <span class="tooltip-wrap" id="tooltip-why">
+          <button type="button" class="tooltip-hint" aria-expanded="false" aria-controls="tooltip-why-body">Why multiple?</button>
+          <span class="tooltip-body" id="tooltip-why-body" role="tooltip">Different families and dialects use different address terms. Choose what your family uses, or pin a specific term below.</span>
+        </span>
       </div>
       <div class="results-area" id="recommended-container" aria-live="polite"></div>
-      <button type="button" class="pin-btn" id="pin-term-btn" disabled>Pin my family's term</button>
+      <button type="button" class="pin-btn" id="pin-term-btn" disabled>
+        Pin my family's term
+        <span class="toggle-hint">- save as your preferred address</span>
+      </button>
       <div class="result-heading-row" style="margin-top:14px">
         <div class="result-subtitle">Also acceptable</div>
       </div>
@@ -786,9 +816,26 @@
     </footer>
   </main>
 
-    <script type="module">
+  <script type="module">
     import { initApp } from './app.mjs';
     initApp();
+
+    // Tooltip toggle
+    document.querySelectorAll('.tooltip-hint').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const wrap = btn.closest('.tooltip-wrap');
+        const isOpen = wrap.classList.toggle('open');
+        btn.setAttribute('aria-expanded', isOpen);
+      });
+    });
+    document.addEventListener('click', (e) => {
+      document.querySelectorAll('.tooltip-wrap.open').forEach(wrap => {
+        if (!wrap.contains(e.target)) {
+          wrap.classList.remove('open');
+          wrap.querySelector('.tooltip-hint')?.setAttribute('aria-expanded', 'false');
+        }
+      });
+    });
   </script>
 </body>
 </html>
