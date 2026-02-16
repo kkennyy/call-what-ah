@@ -219,7 +219,7 @@
       line-height: 1;
     }
 
-    .step-row select {
+    .step-row select:not(.rank-select) {
       flex: 1;
       min-width: 0;
       padding: 11px 14px;
@@ -234,12 +234,12 @@
       appearance: auto;
       transition: border-color 0.2s, box-shadow 0.2s;
     }
-    .step-row select:focus {
+    .step-row select:not(.rank-select):focus {
       outline: none;
       border-color: var(--primary);
       box-shadow: 0 0 0 3px rgba(184, 52, 58, 0.12);
     }
-    .step-row select:hover {
+    .step-row select:not(.rank-select):hover {
       border-color: var(--accent);
     }
 
