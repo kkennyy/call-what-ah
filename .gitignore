@@ -1,0 +1,16 @@
+# Agent/assistant instruction files
+AGENTS.md
+CLAUDE.md
+AGENT_INSTRUCTIONS.md
+
+# Local tool folders
+.codex/
+.claude/
+
+# Editor/IDE settings
+.vscode/
+.idea/
+
+# OS artifacts
+.DS_Store
+Thumbs.db

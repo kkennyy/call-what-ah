@@ -118,9 +118,6 @@
 
     /* ============== THEME TOGGLE ============== */
     .theme-toggle {
-      position: absolute;
-      top: 36px;
-      right: 0;
       width: 34px;
       height: 34px;
       border: 2px solid var(--border);
@@ -133,12 +130,13 @@
       font-size: 1rem;
       font-weight: 700;
       color: var(--accent);
-      transform: rotate(4deg);
+      transform: rotate(-4deg);
       line-height: 1;
       z-index: 5;
       overflow: hidden;
       padding: 0;
       transition: border-color 0.3s, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      flex-shrink: 0;
     }
     .theme-toggle::after {
       content: '';
@@ -647,19 +645,28 @@
     }
     .pin-btn {
       margin-top: 10px;
-      border: 1px solid rgba(255,255,255,0.45);
-      background: rgba(255,255,255,0.14);
-      color: #fff;
+      border: 1.5px solid rgba(255,255,255,0.6);
+      background: rgba(255,255,255,0.92);
+      color: var(--primary-dark);
       border-radius: var(--radius-xs);
       padding: 8px 12px;
       font-size: 0.82rem;
       font-weight: 600;
       cursor: pointer;
       font-family: inherit;
+      transition: all 0.2s;
+    }
+    .pin-btn:hover {
+      background: #fff;
+      border-color: rgba(255,255,255,0.8);
     }
     .pin-btn:disabled {
       opacity: 0.45;
       cursor: not-allowed;
+    }
+    .pin-btn .toggle-hint {
+      color: rgba(140,35,40,0.65);
+      font-weight: 500;
     }
     /* ============== TOOLTIP POPOVER ============== */
     .tooltip-wrap {
@@ -820,6 +827,39 @@
     [data-theme="dark"] body::before {
       opacity: 0.04;
     }
+    [data-theme="dark"] .pin-btn {
+      background: rgba(255,255,255,0.12);
+      color: var(--text);
+      border-color: rgba(255,255,255,0.3);
+    }
+    [data-theme="dark"] .pin-btn:hover {
+      background: rgba(255,255,255,0.18);
+      border-color: rgba(255,255,255,0.4);
+    }
+    [data-theme="dark"] .pin-btn .toggle-hint {
+      color: var(--text-muted);
+    }
+    [data-theme="dark"] .results-showcase .card-label {
+      color: rgba(255,255,255,0.95);
+    }
+    [data-theme="dark"] .results-showcase .result-subtitle {
+      color: rgba(255,255,255,0.92);
+    }
+    [data-theme="dark"] .results-showcase .tooltip-hint {
+      border-color: rgba(255,255,255,0.7);
+      background: rgba(255,255,255,0.2);
+      color: #fff;
+    }
+    [data-theme="dark"] .results-showcase .results-note {
+      color: rgba(255,255,255,0.75);
+    }
+    [data-theme="dark"] .results-showcase .results-empty {
+      color: rgba(255,255,255,0.8);
+    }
+    [data-theme="dark"] .results-showcase::before,
+    [data-theme="dark"] .results-showcase::after {
+      border-color: rgba(255,255,255,0.25);
+    }
 
     /* ============== LOADING ============== */
     .loading {
@@ -867,16 +907,16 @@
   <main>
     <header class="header">
       <div class="header-inner">
+        <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">
+          <span class="icon-sun" aria-hidden="true">日</span>
+          <span class="icon-moon" aria-hidden="true">月</span>
+        </button>
         <div class="seal" aria-hidden="true">叫</div>
         <div>
           <h1>Call What Ah?</h1>
           <p class="subtitle">Mandarin kinship address finder</p>
         </div>
       </div>
-      <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">
-        <span class="icon-sun" aria-hidden="true">日</span>
-        <span class="icon-moon" aria-hidden="true">月</span>
-      </button>
     </header>
 
     <!-- Sex selector -->
