@@ -8,6 +8,7 @@ import {
   resolveConcept,
   selectTerms
 } from './kinship_core.mjs';
+import { getDialectRomanization, getMandarinPinyin } from './pronunciation_core.mjs';
 
 const MAX_CACHE = 500;
 const cache = new Map();
@@ -17,6 +18,7 @@ let stepsById = {};
 let numerals = {};
 let connector = '?';
 let dialectData = null;
+let romanizationData = null;
 let pinyinFn = null;
 
 let state = {
@@ -184,10 +186,23 @@ function renderTermChip(term, idx = 0) {
   chip.className = 'chip';
   chip.style.animationDelay = `${idx * 0.04}s`;
 
+  const textWrap = document.createElement('span');
+  textWrap.className = 'chip-text-wrap';
+
   const textSpan = document.createElement('span');
   textSpan.className = 'chip-text';
   const chars = [...term];
-  const pinyinArr = pinyinFn ? pinyinFn(term, { type: 'array' }) : [];
+  let pinyinArr = [];
+  if (pinyinFn) {
+    try {
+      pinyinArr = pinyinFn(term, { type: 'array' }) || [];
+    } catch {
+      pinyinArr = [];
+    }
+  }
+  const mandarinPinyinFromArray = pinyinArr.map((item) => (typeof item === 'string' ? item.trim() : '')).filter(Boolean).join(' ');
+  const mandarinPinyin = mandarinPinyinFromArray || getMandarinPinyin(term, pinyinFn);
+
   chars.forEach((ch, ci) => {
     const col = document.createElement('span');
     col.className = 'char-col';
@@ -203,7 +218,34 @@ function renderTermChip(term, idx = 0) {
     }
     textSpan.appendChild(col);
   });
-  chip.appendChild(textSpan);
+  textWrap.appendChild(textSpan);
+
+  const dialectRomanization = getDialectRomanization(term, state.dialectId, romanizationData, mandarinPinyin);
+  if (dialectRomanization) {
+    const line = document.createElement('span');
+    line.className = 'chip-roman-line';
+
+    const system = document.createElement('span');
+    system.className = 'chip-roman-system';
+    system.textContent = `${dialectRomanization.systemName}:`;
+    line.appendChild(system);
+
+    if (dialectRomanization.isFallback) {
+      const fallback = document.createElement('span');
+      fallback.className = 'chip-roman-fallback';
+      fallback.textContent = 'fallback';
+      line.appendChild(fallback);
+    }
+
+    const value = document.createElement('span');
+    value.className = 'chip-roman-text';
+    value.textContent = dialectRomanization.text;
+    line.appendChild(value);
+
+    textWrap.appendChild(line);
+  }
+
+  chip.appendChild(textWrap);
 
   const hint = document.createElement('span');
   hint.className = 'copy-hint';
@@ -400,18 +442,28 @@ function wireEvents() {
 }
 
 async function loadData() {
-  const [stepsResp, dialectResp] = await Promise.all([
+  const [stepsResp, dialectResp, romanizationResp] = await Promise.all([
     fetch('./kinship_en_steps.json'),
-    fetch('./dialect_variants.json')
+    fetch('./dialect_variants.json'),
+    fetch('./dialect_romanization.json').catch(() => null)
   ]);
   const stepsJson = await stepsResp.json();
   const dialectJson = await dialectResp.json();
+  let romanizationJson = { systems: {}, overrides: {} };
+  if (romanizationResp?.ok) {
+    try {
+      romanizationJson = await romanizationResp.json();
+    } catch {
+      romanizationJson = { systems: {}, overrides: {} };
+    }
+  }
 
   stepsData = stepsJson.steps || [];
   stepsById = Object.fromEntries(stepsData.map((s) => [s.id, s]));
   numerals = stepsJson.numerals || {};
   connector = stepsJson.buildText?.connector || '?';
   dialectData = dialectJson;
+  romanizationData = romanizationJson;
 }
 
 function assignDomRefs() {

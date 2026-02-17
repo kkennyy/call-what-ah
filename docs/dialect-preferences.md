@@ -20,6 +20,7 @@ The app is deterministic and chain-driven (no free text parsing). Many kinship c
 3. View:
    - **Recommended (your dialect)**
    - **Also acceptable**
+   - Dialect romanization line under each term (with explicit fallback label if dialect-specific romanization is unavailable)
 4. Pin household-preferred term using **Pin my family's term**.
    - Stored in `localStorage` key `cwah.customDialectOverrides.v1`
    - Dialect preference key: `cwah.settings.dialectPreference`

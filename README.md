@@ -38,6 +38,7 @@ node tests/run-tests.mjs
 
 ```bash
 node scripts/generate_dialect_variants.mjs
+node scripts/generate_dialect_romanization.mjs
 node scripts/normalize_sources.mjs
 node tests/run-tests.mjs
 ```

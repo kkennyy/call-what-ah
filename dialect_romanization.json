@@ -1,0 +1,154 @@
+{
+  "meta": {
+    "version": "1.0.0",
+    "generatedAt": "2026-02-17",
+    "notes": "Dialect romanization overrides with fallback rules"
+  },
+  "systems": {
+    "mandarin_standard": {
+      "name": "Hanyu Pinyin",
+      "toneFormat": "marks"
+    },
+    "cantonese_sg": {
+      "name": "Jyutping",
+      "toneFormat": "numbers"
+    },
+    "hokkien_sg": {
+      "name": "Tai-lo",
+      "toneFormat": "numbers"
+    },
+    "teochew_sg": {
+      "name": "Peng'im",
+      "toneFormat": "numbers"
+    },
+    "hakka_sg": {
+      "name": "PFS",
+      "toneFormat": "numbers"
+    },
+    "hainanese_sg": {
+      "name": "Hainanese Romanization",
+      "toneFormat": "numbers"
+    },
+    "custom": {
+      "name": "Family Romanization",
+      "toneFormat": "custom"
+    }
+  },
+  "overrides": {
+    "cantonese_sg": {
+      "姑妈": {
+        "roman": "gu maa1",
+        "confidence": "high",
+        "sourceBacked": true
+      },
+      "姑姐": {
+        "roman": "gu ze2",
+        "confidence": "medium",
+        "sourceBacked": true
+      },
+      "大姑": {
+        "roman": "daai6 gu1",
+        "confidence": "medium",
+        "sourceBacked": true
+      },
+      "伯父": {
+        "roman": "baak3 fu6",
+        "confidence": "high",
+        "sourceBacked": true
+      },
+      "叔叔": {
+        "roman": "suk1 suk1",
+        "confidence": "high",
+        "sourceBacked": true
+      },
+      "舅父": {
+        "roman": "kau5 fu6",
+        "confidence": "high",
+        "sourceBacked": true
+      },
+      "阿姨": {
+        "roman": "aa3 ji4",
+        "confidence": "medium",
+        "sourceBacked": true
+      }
+    },
+    "hokkien_sg": {
+      "阿姑": {
+        "roman": "a-ku",
+        "confidence": "high",
+        "sourceBacked": true
+      },
+      "阿舅": {
+        "roman": "a-ku",
+        "confidence": "high",
+        "sourceBacked": true
+      },
+      "阿姨": {
+        "roman": "a-i",
+        "confidence": "medium",
+        "sourceBacked": true
+      }
+    },
+    "teochew_sg": {
+      "阿姑": {
+        "roman": "a1 gou1",
+        "confidence": "medium",
+        "sourceBacked": true
+      },
+      "阿伯": {
+        "roman": "a1 beh4",
+        "confidence": "medium",
+        "sourceBacked": true
+      },
+      "阿叔": {
+        "roman": "a1 zig4",
+        "confidence": "medium",
+        "sourceBacked": true
+      },
+      "阿舅": {
+        "roman": "a1 gu6",
+        "confidence": "medium",
+        "sourceBacked": true
+      },
+      "阿姨": {
+        "roman": "a1 i5",
+        "confidence": "medium",
+        "sourceBacked": true
+      }
+    },
+    "hakka_sg": {
+      "阿姑": {
+        "roman": "a1 gu1",
+        "confidence": "medium",
+        "sourceBacked": true
+      },
+      "伯父": {
+        "roman": "bag4 fu3",
+        "confidence": "medium",
+        "sourceBacked": true
+      },
+      "叔叔": {
+        "roman": "sug5 sug5",
+        "confidence": "medium",
+        "sourceBacked": true
+      },
+      "阿舅": {
+        "roman": "a1 kiu5",
+        "confidence": "medium",
+        "sourceBacked": true
+      },
+      "阿姨": {
+        "roman": "a1 i1",
+        "confidence": "medium",
+        "sourceBacked": true
+      }
+    },
+    "hainanese_sg": {
+      "阿姨": {
+        "roman": "a1 yi1",
+        "confidence": "low",
+        "sourceBacked": false
+      }
+    }
+  }
+}
