@@ -18,8 +18,15 @@ assert.strictEqual(fallbackHit.text, 'nai nai');
 assert.strictEqual(fallbackHit.systemName, 'Jyutping');
 assert.strictEqual(fallbackHit.isFallback, true);
 
+// Falls back to embedded Mandarin map when runtime pinyin is unavailable.
+const mapFallback = getDialectRomanization('奶奶', 'cantonese_sg', romanizationJson, null);
+assert.ok(mapFallback);
+assert.strictEqual(mapFallback.systemName, 'Jyutping');
+assert.strictEqual(mapFallback.isFallback, true);
+assert.ok(typeof mapFallback.text === 'string' && mapFallback.text.length > 0);
+
 // Returns null when neither override nor Mandarin fallback is available.
-const missingBoth = getDialectRomanization('奶奶', 'cantonese_sg', romanizationJson, null);
+const missingBoth = getDialectRomanization('__missing_term__', 'cantonese_sg', romanizationJson, null);
 assert.strictEqual(missingBoth, null);
 
 // Mandarin dialect should not render a duplicate second line.

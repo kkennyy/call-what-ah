@@ -35,9 +35,10 @@ export function getDialectRomanization(term, dialectId, romanizationData, mandar
     };
   }
 
-  if (mandarinPinyin) {
+  const fallback = mandarinPinyin || romanizationData.mandarinFallback?.[term] || null;
+  if (fallback) {
     return {
-      text: mandarinPinyin,
+      text: fallback,
       systemName,
       isFallback: true,
       confidence: 'low'

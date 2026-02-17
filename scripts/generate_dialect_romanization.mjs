@@ -55,6 +55,20 @@ function dedupe(list) {
   return [...new Set((list || []).filter(Boolean))];
 }
 
+async function loadPinyinFn() {
+  const resp = await fetch('https://cdn.jsdelivr.net/npm/pinyin-pro/+esm');
+  if (!resp.ok) {
+    throw new Error(`Failed to fetch pinyin-pro: ${resp.status}`);
+  }
+  const code = await resp.text();
+  const url = `data:text/javascript;base64,${Buffer.from(code).toString('base64')}`;
+  const mod = await import(url);
+  if (typeof mod.pinyin !== 'function') {
+    throw new Error('pinyin-pro module did not export pinyin function');
+  }
+  return mod.pinyin;
+}
+
 function buildTermUniverse(dialectJson) {
   const byDialect = {};
   Object.keys(SYSTEMS).forEach((dialectId) => {
@@ -69,6 +83,14 @@ function buildTermUniverse(dialectJson) {
     }
   }
   return byDialect;
+}
+
+function collectAllTerms(termUniverse) {
+  const all = new Set();
+  for (const terms of Object.values(termUniverse)) {
+    for (const term of terms) all.add(term);
+  }
+  return all;
 }
 
 function selectOverrides(termUniverse) {
@@ -86,10 +108,32 @@ function selectOverrides(termUniverse) {
   return output;
 }
 
-function main() {
+function buildMandarinFallback(allTerms, pinyinFn) {
+  const out = {};
+  for (const term of allTerms) {
+    try {
+      const arr = pinyinFn(term, { type: 'array' }) || [];
+      const joined = arr.map((item) => (typeof item === 'string' ? item.trim() : '')).filter(Boolean).join(' ');
+      if (joined) out[term] = joined;
+    } catch {
+      // Keep deterministic output: skip unconvertible term.
+    }
+  }
+  return out;
+}
+
+async function main() {
   const dialectJson = JSON.parse(fs.readFileSync(INPUT, 'utf8'));
   const termUniverse = buildTermUniverse(dialectJson);
+  const allTerms = collectAllTerms(termUniverse);
   const overrides = selectOverrides(termUniverse);
+  let mandarinFallback = {};
+  try {
+    const pinyinFn = await loadPinyinFn();
+    mandarinFallback = buildMandarinFallback(allTerms, pinyinFn);
+  } catch (err) {
+    console.warn(`Warning: could not build mandarinFallback map: ${err?.message || err}`);
+  }
   const generatedAt = new Date().toISOString().slice(0, 10);
 
   const output = {
@@ -99,7 +143,8 @@ function main() {
       notes: 'Dialect romanization overrides with fallback rules'
     },
     systems: SYSTEMS,
-    overrides
+    overrides,
+    mandarinFallback
   };
 
   fs.writeFileSync(OUTPUT, `${JSON.stringify(output, null, 2)}\n`, 'utf8');
@@ -118,4 +163,4 @@ function main() {
   console.log(`Generated ${OUTPUT}`);
 }
 
-main();
+await main();
