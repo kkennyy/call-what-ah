@@ -420,8 +420,21 @@ export function selectTerms(input) {
   };
 }
 
+function cleanLabel(label) {
+  return label.replace(/\s*\(.*?\)\s*/g, '').trim();
+}
+
+function buildChainDescription(chain, stepsById) {
+  return chain
+    .map((entry) => {
+      const step = stepsById[entry.stepId];
+      return step ? cleanLabel(step.enLabel) : '?';
+    })
+    .join('\u2019s ');
+}
+
 export function getDisambiguationQuestions(input) {
-  const { chain, stepsById, sex, reverseInfo } = input;
+  const { chain, stepsById, sex, reverseInfo, facts = {} } = input;
   const questions = [];
 
   chain.forEach((entry, i) => {
@@ -469,12 +482,34 @@ export function getDisambiguationQuestions(input) {
     });
   }
 
+  const chainDesc = buildChainDescription(chain, stepsById);
+
   if (reverseInfo?.missingFacts?.includes('cousinAgeRelative')) {
     questions.push({
       id: 'cousin-age-relative',
-      question: 'For this cousin, is the person older or younger than you?',
+      question: `Is your ${chainDesc} older or younger than you?`,
       type: 'setFact',
       factKey: 'cousinAgeRelative',
+      options: [
+        { label: 'Older than me', value: 'older' },
+        { label: 'Younger than me', value: 'younger' }
+      ]
+    });
+  }
+
+  if (
+    reverseInfo?.requires?.includes('cousinAgeRelativeToUser') &&
+    !reverseInfo?.missingFacts?.includes('cousinAgeRelative') &&
+    facts.cousinAgeRelative
+  ) {
+    questions.push({
+      id: 'cousin-age-relative-resolved',
+      question: `Is your ${chainDesc} older or younger than you?`,
+      type: 'setFact',
+      factKey: 'cousinAgeRelative',
+      resolved: true,
+      currentValue: facts.cousinAgeRelative,
+      currentLabel: facts.cousinAgeRelative === 'older' ? 'Older than me' : 'Younger than me',
       options: [
         { label: 'Older than me', value: 'older' },
         { label: 'Younger than me', value: 'younger' }
@@ -507,7 +542,11 @@ export function applyQuestionAnswer(state, question, option) {
     const next = state.chain.map((entry) => ({ ...entry }));
     next[question.stepIndex].stepId = option.stepId;
     if (next[question.stepIndex].rank) next[question.stepIndex].rank = null;
-    return { ...state, chain: next, facts: {} };
+    const preserved = {};
+    for (const [k, v] of Object.entries(state.facts || {})) {
+      if (!k.startsWith(`step${question.stepIndex + 1}_`)) preserved[k] = v;
+    }
+    return { ...state, chain: next, facts: preserved };
   }
   if (question.type === 'setSex') {
     return { ...state, sex: option.sex };

@@ -367,7 +367,6 @@ function renderChain() {
 
       rankSel.addEventListener('change', () => {
         state.chain[i].rank = rankSel.value ? parseInt(rankSel.value, 10) : null;
-        state.facts = {};
         update();
       });
       row.appendChild(rankSel);
@@ -588,39 +587,61 @@ function renderDisambiguation(questions) {
   dom.refinementArea.innerHTML = '';
   questions.forEach((q) => {
     const panel = document.createElement('div');
-    panel.className = 'refine-panel';
+    panel.className = q.resolved ? 'refine-panel refine-resolved' : 'refine-panel';
 
-    const label = document.createElement('div');
-    label.className = 'refine-label';
-    label.textContent = 'Needs your input';
-    panel.appendChild(label);
+    if (q.resolved) {
+      const label = document.createElement('div');
+      label.className = 'refine-label refine-label-resolved';
+      label.textContent = 'Answered';
+      panel.appendChild(label);
 
-    const title = document.createElement('div');
-    title.className = 'refine-question';
-    title.textContent = q.question;
-    panel.appendChild(title);
+      const summary = document.createElement('div');
+      summary.className = 'refine-summary';
+      summary.textContent = `${q.question} \u2014 ${q.currentLabel}`;
+      panel.appendChild(summary);
 
-    const opts = document.createElement('div');
-    opts.className = 'refine-options';
-    q.options.forEach((option) => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'refine-btn';
-      btn.textContent = option.label;
-      btn.addEventListener('click', () => {
-        state = applyQuestionAnswer(state, q, option);
-        if (q.type === 'setSex') setSexInput(state.sex);
-        renderChain();
+      const changeBtn = document.createElement('button');
+      changeBtn.type = 'button';
+      changeBtn.className = 'refine-change-btn';
+      changeBtn.textContent = 'Change';
+      changeBtn.addEventListener('click', () => {
+        delete state.facts[q.factKey];
         update();
       });
-      opts.appendChild(btn);
-    });
-    panel.appendChild(opts);
+      panel.appendChild(changeBtn);
+    } else {
+      const label = document.createElement('div');
+      label.className = 'refine-label';
+      label.textContent = 'Needs your input';
+      panel.appendChild(label);
+
+      const title = document.createElement('div');
+      title.className = 'refine-question';
+      title.textContent = q.question;
+      panel.appendChild(title);
+
+      const opts = document.createElement('div');
+      opts.className = 'refine-options';
+      q.options.forEach((option) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'refine-btn';
+        btn.textContent = option.label;
+        btn.addEventListener('click', () => {
+          state = applyQuestionAnswer(state, q, option);
+          if (q.type === 'setSex') setSexInput(state.sex);
+          renderChain();
+          update();
+        });
+        opts.appendChild(btn);
+      });
+      panel.appendChild(opts);
+    }
 
     dom.refinementArea.appendChild(panel);
   });
 
-  if (questions.length > 0) {
+  if (questions.some((q) => !q.resolved)) {
     dom.refinementArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 }
@@ -671,7 +692,8 @@ function update() {
     chain: state.chain,
     stepsById,
     sex: state.sex,
-    reverseInfo: conceptInfo
+    reverseInfo: conceptInfo,
+    facts: state.facts
   });
   renderDisambiguation(questions);
 
@@ -702,7 +724,6 @@ function update() {
 function wireEvents() {
   dom.addStepBtn.addEventListener('click', () => {
     state.chain.push({ stepId: stepsData[0].id, rank: null });
-    state.facts = {};
     renderChain();
     update();
   });

@@ -879,6 +879,40 @@
       box-shadow: var(--shadow-sm);
     }
 
+    /* Resolved refinement (answered state) */
+    .refine-resolved {
+      border-color: var(--success, #2d7a3a);
+      background: var(--surface);
+      animation: none;
+      box-shadow: var(--shadow-sm);
+      padding: 14px 18px;
+    }
+    .refine-label-resolved {
+      color: var(--success, #2d7a3a);
+    }
+    .refine-summary {
+      font-size: 0.88rem;
+      color: var(--text);
+      line-height: 1.4;
+      margin-bottom: 8px;
+    }
+    .refine-change-btn {
+      font-size: 0.78rem;
+      font-family: 'Figtree', system-ui, sans-serif;
+      font-weight: 600;
+      padding: 6px 14px;
+      border: 1px solid var(--border, #ccc);
+      border-radius: var(--radius-xs);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .refine-change-btn:hover {
+      background: var(--accent);
+      color: #fff;
+    }
+
     /* Refined results use white card style */
     .refined-section {
       margin-top: 14px;
