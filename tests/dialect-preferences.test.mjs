@@ -1,7 +1,9 @@
 import assert from 'assert';
 import fs from 'fs';
 import {
+  buildTermGlossIndex,
   buildSelector,
+  resolveEnglishGlossForTerm,
   resolveConcept,
   selectTerms,
   selectorToGenericConceptId
@@ -10,6 +12,7 @@ import {
 const stepsJson = JSON.parse(fs.readFileSync('./kinship_en_steps.json', 'utf8'));
 const dialectJson = JSON.parse(fs.readFileSync('./dialect_variants.json', 'utf8'));
 const stepsById = Object.fromEntries(stepsJson.steps.map((s) => [s.id, s]));
+const termGlossIndex = buildTermGlossIndex(dialectJson);
 
 function chain(ids) {
   return ids.map((id) => ({ stepId: id, rank: null }));
@@ -171,5 +174,52 @@ const hokkienPick = selectTerms({
 });
 assert.strictEqual(hokkienPick.recommended, '\u963f\u59d1');
 assert.ok(hokkienPick.alternatives.includes('\u5927\u59d1'));
+
+// English gloss resolution should prefer the active concept context for ambiguous terms.
+const contextGloss = resolveEnglishGlossForTerm({
+  term: '\u59d1\u5988',
+  concept: dialectJson.concepts.paternal_aunt_elder,
+  conceptId: 'paternal_aunt_elder',
+  selector: 'f,os',
+  reverse: false,
+  termGlossIndex
+});
+assert.strictEqual(contextGloss, "father's older sister");
+
+// Missing concept should still resolve via unique term mapping from index.
+const uniqueTermGloss = resolveEnglishGlossForTerm({
+  term: '\u4f2f\u7236',
+  concept: null,
+  conceptId: 'paternal_uncle_unspecified',
+  selector: 'f,xb',
+  reverse: false,
+  termGlossIndex
+});
+assert.strictEqual(uniqueTermGloss, "father's older brother");
+
+// Selector fallback applies when term is not in the index.
+const selectorFallbackGloss = resolveEnglishGlossForTerm({
+  term: '__missing_term__',
+  concept: null,
+  conceptId: 'selector_f__xb',
+  selector: 'f,xb',
+  reverse: false,
+  termGlossIndex
+});
+assert.strictEqual(selectorFallbackGloss, "father's brother (age unknown)");
+
+// Multi-gloss terms return deterministic joined glosses without context.
+const multiGloss = resolveEnglishGlossForTerm({
+  term: '\u59d1\u5988',
+  concept: null,
+  conceptId: 'selector_f__xs',
+  selector: 'f,xs',
+  reverse: false,
+  termGlossIndex
+});
+assert.strictEqual(
+  multiGloss,
+  "father's older sister / father's sister (age unknown) / father's younger sister"
+);
 
 console.log('All deterministic dialect-preference tests passed.');

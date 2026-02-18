@@ -3,9 +3,11 @@ import {
   DIALECT_STORAGE_KEY,
   CUSTOM_OVERRIDES_STORAGE_KEY,
   applyQuestionAnswer,
+  buildTermGlossIndex,
   buildChineseText,
   getDisambiguationQuestions,
   resolveConcept,
+  resolveEnglishGlossForTerm,
   selectTerms
 } from './kinship_core.mjs';
 import { getDialectRomanization, getMandarinPinyin } from './pronunciation_core.mjs';
@@ -56,6 +58,7 @@ let numerals = {};
 let connector = '?';
 let dialectData = null;
 let romanizationData = null;
+let termGlossIndex = new Map();
 let pinyinFn = null;
 
 let state = {
@@ -168,8 +171,9 @@ function findBestVoice(preferredLangs, voiceKeywords = []) {
 
 function setSpeechButtonState(button, playing) {
   if (!button) return;
+  const playLabel = button.dataset.playLabel || 'Play';
   button.classList.toggle('playing', playing);
-  button.textContent = playing ? 'Stop' : 'Play';
+  button.textContent = playing ? 'Stop' : playLabel;
 }
 
 function resetActiveSpeechButton() {
@@ -188,7 +192,7 @@ function getDialectSpeechProfile(dialectId) {
   return DIALECT_SPEECH_PROFILES[dialectId] || DIALECT_SPEECH_PROFILES.mandarin_standard;
 }
 
-function buildSpeechPlan({ term, dialectId, mandarinPinyin, dialectRomanization }) {
+function buildDialectSpeechPlan({ term, dialectId, mandarinPinyin, dialectRomanization }) {
   if (!term) return null;
   const profile = getDialectSpeechProfile(dialectId);
 
@@ -219,6 +223,25 @@ function buildSpeechPlan({ term, dialectId, mandarinPinyin, dialectRomanization 
     preferredLangs: MANDARIN_LANGS,
     voiceKeywords: ['mandarin', 'putonghua', 'chinese']
   });
+
+  return { candidates };
+}
+
+function buildMandarinSpeechPlan({ term, mandarinPinyin }) {
+  if (!term) return null;
+  const candidates = [{
+    text: term,
+    preferredLangs: MANDARIN_LANGS,
+    voiceKeywords: ['mandarin', 'putonghua', 'chinese']
+  }];
+
+  if (mandarinPinyin) {
+    candidates.push({
+      text: mandarinPinyin,
+      preferredLangs: LATIN_FALLBACK_LANGS,
+      voiceKeywords: []
+    });
+  }
 
   return { candidates };
 }
@@ -369,7 +392,7 @@ function renderChain() {
   });
 }
 
-function renderTermChip(term, idx = 0) {
+function renderTermChip(term, idx = 0, englishGloss = null) {
   const shell = document.createElement('div');
   shell.className = 'chip-shell';
 
@@ -437,6 +460,13 @@ function renderTermChip(term, idx = 0) {
     textWrap.appendChild(line);
   }
 
+  if (englishGloss) {
+    const englishLine = document.createElement('span');
+    englishLine.className = 'chip-en-line';
+    englishLine.textContent = `English: ${englishGloss}`;
+    textWrap.appendChild(englishLine);
+  }
+
   chip.appendChild(textWrap);
 
   const hint = document.createElement('span');
@@ -467,31 +497,53 @@ function renderTermChip(term, idx = 0) {
 
   shell.appendChild(chip);
 
-  const playBtn = document.createElement('button');
-  playBtn.type = 'button';
-  playBtn.className = 'chip-audio-btn';
-  playBtn.textContent = 'Play';
-  playBtn.setAttribute('aria-label', `Play pronunciation for ${term}`);
+  const controls = document.createElement('span');
+  controls.className = 'chip-audio-controls';
+
+  const dialectBtn = document.createElement('button');
+  dialectBtn.type = 'button';
+  dialectBtn.className = 'chip-audio-btn';
+  dialectBtn.dataset.playLabel = 'Dialect';
+  dialectBtn.textContent = dialectBtn.dataset.playLabel;
+  dialectBtn.setAttribute('aria-label', `Play dialect pronunciation for ${term}`);
+
+  const mandarinBtn = document.createElement('button');
+  mandarinBtn.type = 'button';
+  mandarinBtn.className = 'chip-audio-btn';
+  mandarinBtn.dataset.playLabel = 'Mandarin';
+  mandarinBtn.textContent = mandarinBtn.dataset.playLabel;
+  mandarinBtn.setAttribute('aria-label', `Play Mandarin pronunciation for ${term}`);
 
   if (!hasSpeechSupport()) {
-    playBtn.disabled = true;
-    playBtn.title = 'Speech synthesis is not supported in this browser';
+    dialectBtn.disabled = true;
+    mandarinBtn.disabled = true;
+    dialectBtn.title = 'Speech synthesis is not supported in this browser';
+    mandarinBtn.title = 'Speech synthesis is not supported in this browser';
   } else {
-    const speechPlan = buildSpeechPlan({
+    const dialectSpeechPlan = buildDialectSpeechPlan({
       term,
       dialectId: state.dialectId,
       mandarinPinyin,
       dialectRomanization
     });
-    playBtn.title = 'Play pronunciation';
-    playBtn.addEventListener('click', () => speakPlan(speechPlan, playBtn));
+    const mandarinSpeechPlan = buildMandarinSpeechPlan({
+      term,
+      mandarinPinyin
+    });
+
+    dialectBtn.title = 'Play selected dialect pronunciation';
+    mandarinBtn.title = 'Play Mandarin pronunciation';
+    dialectBtn.addEventListener('click', () => speakPlan(dialectSpeechPlan, dialectBtn));
+    mandarinBtn.addEventListener('click', () => speakPlan(mandarinSpeechPlan, mandarinBtn));
   }
 
-  shell.appendChild(playBtn);
+  controls.appendChild(dialectBtn);
+  controls.appendChild(mandarinBtn);
+  shell.appendChild(controls);
   return shell;
 }
 
-function renderRecommended(selection, conceptId) {
+function renderRecommended(selection, conceptId, englishGlossByTerm = new Map()) {
   dom.recommendedContainer.innerHTML = '';
   if (!selection.recommended) {
     const empty = document.createElement('div');
@@ -506,7 +558,7 @@ function renderRecommended(selection, conceptId) {
 
   const chips = document.createElement('div');
   chips.className = 'chips';
-  chips.appendChild(renderTermChip(selection.recommended));
+  chips.appendChild(renderTermChip(selection.recommended, 0, englishGlossByTerm.get(selection.recommended) || null));
   dom.recommendedContainer.appendChild(chips);
 
   dom.pinTermBtn.hidden = false;
@@ -515,7 +567,7 @@ function renderRecommended(selection, conceptId) {
   dom.pinTermBtn.dataset.conceptId = conceptId;
 }
 
-function renderAlternatives(alternatives) {
+function renderAlternatives(alternatives, englishGlossByTerm = new Map()) {
   dom.resultsContainer.innerHTML = '';
   if (!alternatives.length) {
     dom.alternativesHeading.hidden = true;
@@ -526,7 +578,9 @@ function renderAlternatives(alternatives) {
   dom.resultsContainer.hidden = false;
   const chips = document.createElement('div');
   chips.className = 'chips';
-  alternatives.forEach((term, idx) => chips.appendChild(renderTermChip(term, idx)));
+  alternatives.forEach((term, idx) => {
+    chips.appendChild(renderTermChip(term, idx, englishGlossByTerm.get(term) || null));
+  });
   dom.resultsContainer.appendChild(chips);
 }
 
@@ -621,9 +675,28 @@ function update() {
   });
   renderDisambiguation(questions);
 
+  const visibleTerms = dedupe([
+    ...(selection.recommended ? [selection.recommended] : []),
+    ...acceptable
+  ]);
+  const englishGlossByTerm = new Map();
+  const activeConcept = selection.concept || dialectData?.concepts?.[conceptInfo.conceptId] || null;
+  visibleTerms.forEach((term) => {
+    const gloss = resolveEnglishGlossForTerm({
+      term,
+      concept: activeConcept,
+      conceptId: conceptInfo.conceptId,
+      selector: conceptInfo.selector,
+      reverseSelector: conceptInfo.reverseSelector,
+      reverse: state.reverse,
+      termGlossIndex
+    });
+    if (gloss) englishGlossByTerm.set(term, gloss);
+  });
+
   dom.resultsSection.hidden = false;
-  renderRecommended(selection, conceptInfo.conceptId);
-  renderAlternatives(acceptable);
+  renderRecommended(selection, conceptInfo.conceptId, englishGlossByTerm);
+  renderAlternatives(acceptable, englishGlossByTerm);
 }
 
 function wireEvents() {
@@ -681,6 +754,7 @@ async function loadData() {
   connector = stepsJson.buildText?.connector || '?';
   dialectData = dialectJson;
   romanizationData = romanizationJson;
+  termGlossIndex = buildTermGlossIndex(dialectJson);
 }
 
 function assignDomRefs() {

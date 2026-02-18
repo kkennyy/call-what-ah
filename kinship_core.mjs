@@ -136,6 +136,80 @@ export function selectorToEnglishGloss(selector) {
     .join("'s ");
 }
 
+function collectConceptTerms(concept) {
+  const terms = new Set();
+  if (!concept) return terms;
+
+  (concept.canonical_mandarin || []).forEach((term) => {
+    if (term) terms.add(term);
+  });
+
+  Object.values(concept.variants || {}).forEach((variant) => {
+    if (!variant) return;
+    if (variant.preferred) terms.add(variant.preferred);
+    (variant.alternatives || []).forEach((term) => {
+      if (term) terms.add(term);
+    });
+  });
+
+  return terms;
+}
+
+function sortGlosses(glosses) {
+  return [...new Set((glosses || []).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }));
+}
+
+export function buildTermGlossIndex(dialectData) {
+  const index = new Map();
+  const concepts = dialectData?.concepts || {};
+
+  Object.values(concepts).forEach((concept) => {
+    const gloss = typeof concept?.gloss_en === 'string' ? concept.gloss_en.trim() : '';
+    if (!gloss) return;
+
+    const terms = collectConceptTerms(concept);
+    terms.forEach((term) => {
+      const current = index.get(term) || [];
+      current.push(gloss);
+      index.set(term, current);
+    });
+  });
+
+  index.forEach((glosses, term) => {
+    index.set(term, sortGlosses(glosses));
+  });
+
+  return index;
+}
+
+export function resolveEnglishGlossForTerm(input) {
+  const {
+    term,
+    concept,
+    selector,
+    reverseSelector,
+    reverse = false,
+    termGlossIndex
+  } = input || {};
+
+  if (!term) return null;
+
+  const conceptGloss = typeof concept?.gloss_en === 'string' ? concept.gloss_en.trim() : '';
+  if (conceptGloss) {
+    const conceptTerms = collectConceptTerms(concept);
+    if (conceptTerms.has(term)) return conceptGloss;
+  }
+
+  const indexedGlosses = termGlossIndex instanceof Map ? termGlossIndex.get(term) : null;
+  const sortedGlosses = sortGlosses(Array.isArray(indexedGlosses) ? indexedGlosses : []);
+  if (sortedGlosses.length === 1) return sortedGlosses[0];
+  if (sortedGlosses.length > 1) return sortedGlosses.join(' / ');
+
+  const fallbackSelector = reverse ? (reverseSelector || selector) : selector;
+  const fallbackGloss = selectorToEnglishGloss(fallbackSelector);
+  return fallbackGloss || null;
+}
+
 export function buildChineseText(chain, stepsById, numerals, connector) {
   return chain
     .map((entry) => {
