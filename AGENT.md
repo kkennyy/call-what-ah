@@ -1,100 +1,155 @@
 # AGENT.md
 
-## Purpose
-This repository is a deterministic kinship-term web app. Agents should preserve correctness, explainability, and reproducibility over novelty.
+## Mission
 
-Primary goal: given a structured relationship chain, return the correct Mandarin address terms and dialect-aware recommendations without using AI/NLP.
+Maintain a deterministic, explainable kinship-address app. Correctness, traceability, and reproducibility are higher priority than stylistic or speculative changes.
 
-## Product Constraints (Non-Negotiable)
-1. No AI, no LLM inference, no free-text NLP parsing.
-2. Input must stay structured (step-based chain builder).
-3. The app must show all valid baseline outputs when ambiguity exists.
-4. Recommendations must be logic/data-driven and traceable.
-5. Keep MIT attribution/license for `relationship.js` (`LICENSE_mumuy_relationship.txt`).
+Primary objective: given a structured relationship chain, return valid Mandarin baseline terms, dialect-aware recommendations, and explicit clarification prompts when facts are missing.
 
-## Technical Stack
-- Frontend: static HTML + ES modules.
-- Core engine: `relationship.min.mjs` (deterministic kinship resolver).
-- App logic: `app.mjs`.
-- Domain logic/utilities: `kinship_core.mjs`.
+## Non-Negotiable Product Constraints
+
+1. No AI/LLM inference and no free-text NLP parsing.
+2. Input must remain structured (step-based chain builder).
+3. `relationship.js` remains the baseline validator.
+4. Ambiguity must remain explicit until user clarifies it.
+5. Recommendation logic must be data-driven and inspectable.
+6. Keep `relationship.js` attribution/license (`LICENSE_mumuy_relationship.txt`).
+
+## Current Stack
+
+- Static frontend: `index.html` + ES modules.
+- Runtime app controller: `app.mjs`.
+- Deterministic domain logic: `kinship_core.mjs`.
+- Pronunciation utilities: `pronunciation_core.mjs`.
+- Baseline kinship engine: `relationship.min.mjs`.
 - Data:
-  - `kinship_en_steps.json` (step definitions)
-  - `dialect_variants.json` (dialect preferences and sources)
-  - `relationship.data.min.json` (engine data snapshot / reference)
+  - `kinship_en_steps.json`
+  - `dialect_variants.json`
+  - `dialect_romanization.json`
+  - `relationship.data.min.json` (reference snapshot)
 
 ## Repository Map
-- `index.html`: UI structure and styling.
-- `app.mjs`: state management, rendering, event handling, integration with core logic.
-- `kinship_core.mjs`: selector building, concept resolution, ambiguity handling, dialect term selection.
-- `scripts/generate_dialect_variants.mjs`: dialect dataset generation/refresh.
-- `scripts/normalize_sources.mjs`: dialect source normalization.
-- `tests/dialect-preferences.test.mjs`: deterministic behavior tests.
+
+- `index.html`: UI markup, styles, and boot script.
+- `app.mjs`: state, rendering, browser events, speech playback, persistence, data loading.
+- `kinship_core.mjs`: selector construction/inversion, concept resolution, disambiguation questions, term selection, English gloss logic.
+- `pronunciation_core.mjs`: Mandarin pinyin extraction and dialect romanization fallback behavior.
+- `scripts/generate_dialect_variants.mjs`: regenerates concept/dialect dataset.
+- `scripts/normalize_sources.mjs`: normalizes source entries and alternatives.
+- `scripts/generate_dialect_romanization.mjs`: regenerates romanization systems/overrides/fallback map.
+- `tests/dialect-preferences.test.mjs`: deterministic concept/selection/gloss coverage.
+- `tests/romanization.test.mjs`: romanization and fallback behavior.
 - `tests/run-tests.mjs`: test entrypoint.
-- `docs/dialect-preferences.md`: feature behavior and rationale.
+- `docs/dialect-preferences.md`: rationale and source details.
 
-## Runtime Behavior
-1. User builds a relationship chain from controlled step options.
-2. App converts chain into:
-   - Chinese text for `relationship.js` lookup.
-   - Selector string for deterministic concept resolution.
-3. `relationship.js` returns baseline valid terms (de-duped, stable order).
-4. `resolveConcept(...)` computes concept ID, requires/missing facts, reverse mode handling.
-5. `selectTerms(...)` chooses:
-   - `recommended` term when resolvable.
-   - `alternatives` preserving acceptable options.
-6. UI prompts deterministic clarification questions when facts are missing.
+## Runtime Flow (Authoritative)
 
-## Data and Logic Contracts
-- Keep selector-driven logic deterministic.
-- Preserve de-duplication with first-seen order.
-- Do not collapse alternatives into a single answer when unresolved facts remain.
-- Custom household overrides must remain explicit and user-controlled.
-- Local storage keys in use:
-  - `cwah.settings.dialectPreference`
-  - `cwah.customDialectOverrides.v1`
+1. User builds a chain from controlled steps.
+2. App builds:
+   - Chinese text (`buildChineseText`) for `relationship.js`.
+   - selector (`buildSelector`) for internal deterministic concept resolution.
+3. `lookup(...)` calls `relationship(...)` with cache and stable de-duplication.
+4. `resolveConcept(...)` computes:
+   - `conceptId`
+   - `requires`
+   - `missingFacts`
+   - reverse selectors (when reverse mode is enabled)
+5. `selectTerms(...)` returns:
+   - `recommended` (or `null` if unresolved facts remain)
+   - `alternatives`
+   - provenance/confidence metadata
+6. UI renders:
+   - disambiguation panels/questions
+   - recommended/acceptable chips
+   - optional term gloss, pinyin, dialect romanization, speech controls
 
-## Development Rules
-1. Prefer small, targeted changes over broad rewrites.
-2. Maintain backward compatibility for persisted localStorage keys.
-3. For new step types, update both UI flow and selector logic.
-4. For new dialect preferences, include source-backed entries where possible.
-5. Do not hardcode opaque heuristics that bypass `kinship_core.mjs`.
-6. Keep ambiguity explicit: ask focused follow-up questions instead of guessing.
-7. Preserve accessibility basics (labels, keyboard-friendly controls, clear states).
+## Behavioral Invariants
 
-## Testing and Validation
-Run after meaningful logic/data changes:
+1. Determinism: same inputs must produce same outputs.
+2. De-duplication order: preserve first-seen order.
+3. Unresolved facts:
+   - must not force a single recommendation
+   - must keep alternatives visible
+4. Custom overrides:
+   - apply only when dialect is `custom`
+   - stored explicitly in localStorage
+5. Dialect recommendation fallback rule:
+   - if dialect preferred term is not in baseline terms and lacks source backing, fallback to standard preferred term.
+6. Reverse mode:
+   - preserve selector inversion behavior from `invertSelector(...)`
+   - avoid hidden assumptions when sex is unknown.
+7. Speech/pinyin:
+   - app must work even if `pinyin-pro` or speech synthesis is unavailable.
+
+## Persistence Contracts
+
+Do not rename/remove without migration:
+- `cwah.settings.dialectPreference`
+- `cwah.customDialectOverrides.v1`
+- `cwah.settings.theme`
+
+## Data Contracts
+
+- `dialect_variants.json`:
+  - `dialects[]` defines selectable dialect IDs/labels.
+  - `concepts[conceptId]` drives recommendation behavior.
+  - variant `sources` entries should remain normalized.
+- `dialect_romanization.json`:
+  - `systems` maps dialect -> romanization system metadata.
+  - `overrides` maps dialect -> per-term romanization.
+  - `mandarinFallback` is used when dialect mapping is unavailable.
+- `kinship_en_steps.json`:
+  - step IDs/selectors must align with UI flow and tests.
+
+## Change Rules
+
+1. Prefer minimal targeted edits.
+2. Preserve backward compatibility for persisted keys and current data schema.
+3. Do not bypass `kinship_core.mjs` with ad hoc UI heuristics.
+4. If you add/rename step IDs:
+   - update UI rendering paths
+   - update selector logic/tests.
+5. If you change dialect concept mapping:
+   - keep sources/provenance coherent
+   - rerun generation + normalization + tests.
+6. If you adjust disambiguation:
+   - verify both unresolved and resolved-state UI behavior.
+7. Keep accessibility intact (labels, button semantics, keyboard-safe controls).
+
+## Testing Requirements
+
+Run for logic/data changes:
 
 ```bash
 node tests/run-tests.mjs
 ```
 
-If dialect data is regenerated:
+If regenerating dialect data:
 
 ```bash
 node scripts/generate_dialect_variants.mjs
 node scripts/normalize_sources.mjs
+node scripts/generate_dialect_romanization.mjs
 node tests/run-tests.mjs
 ```
 
-Manual sanity checks:
-1. Build representative chains from paternal/maternal lines.
-2. Verify unresolved cousin/sibling age cases request clarification.
-3. Verify reverse mode still resolves deterministically.
-4. Verify dialect recommendation + alternatives display correctly.
-5. Verify pinning custom terms persists across reloads.
+## Manual Validation Checklist
 
-## Change Acceptance Checklist
-- Deterministic behavior preserved (no AI/NLP).
-- No regression to baseline `relationship.js` validity.
-- Ambiguous cases remain explicit and safe.
-- Dialect recommendation changes are source-backed or clearly marked fallback.
-- Tests pass locally.
-- License attribution remains intact.
+1. Chain creation/removal works and preview updates correctly.
+2. Reverse toggle changes output deterministically.
+3. Unknown sibling/cousin age prompts appear when expected.
+4. Resolved facts display as answered and can be changed.
+5. Recommended and alternatives sections are both correct.
+6. Custom pinning persists and activates in `custom` dialect.
+7. Pinyin/romanization lines render without breaking chips.
+8. Speech buttons behave safely when unsupported.
+9. Theme preference persists across reload.
 
-## Agent Workflow Guidance
-1. Read relevant files before editing (`app.mjs`, `kinship_core.mjs`, tests, docs).
-2. Implement minimal changes that satisfy the request.
-3. Update tests/docs when behavior changes.
-4. Run tests when logic/data is modified.
-5. Report what changed, why it changed, and any residual risk.
+## Definition of Done for Agent Changes
+
+- Deterministic behavior preserved.
+- No regression in baseline validity relative to `relationship.js`.
+- Ambiguity remains explicit and user-resolvable.
+- Tests pass locally after meaningful changes.
+- Documentation/tests updated when behavior or schemas change.
+- License attribution remains present.

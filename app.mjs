@@ -583,6 +583,15 @@ function renderAlternatives(alternatives, englishGlossByTerm = new Map()) {
   dom.resultsContainer.appendChild(chips);
 }
 
+function countDialectChoices(selection, dialectId) {
+  const variant = selection?.concept?.variants?.[dialectId] || null;
+  if (!variant) return 0;
+  return dedupe([
+    variant.preferred,
+    ...(variant.alternatives || [])
+  ]).filter(Boolean).length;
+}
+
 function renderDisambiguation(questions) {
   dom.refinementArea.innerHTML = '';
   questions.forEach((q) => {
@@ -717,7 +726,8 @@ function update() {
   });
 
   dom.resultsSection.hidden = false;
-  renderRecommended(selection, conceptInfo.conceptId, englishGlossByTerm, acceptable.length > 0);
+  const canPin = countDialectChoices(selection, state.dialectId) > 1;
+  renderRecommended(selection, conceptInfo.conceptId, englishGlossByTerm, canPin);
   renderAlternatives(acceptable, englishGlossByTerm);
 }
 
