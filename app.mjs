@@ -12,6 +12,43 @@ import { getDialectRomanization, getMandarinPinyin } from './pronunciation_core.
 
 const MAX_CACHE = 500;
 const cache = new Map();
+const MANDARIN_LANGS = ['zh-CN', 'zh-TW', 'zh-HK', 'zh-SG'];
+const CANTONESE_LANGS = ['yue-HK', 'zh-HK', 'zh-CN', 'zh-SG'];
+const HOKKIEN_LANGS = ['nan-TW', 'zh-TW', 'zh-CN', 'zh-SG'];
+const TEOCHEW_LANGS = ['zh-CN', 'zh-SG', 'zh-TW'];
+const HAKKA_LANGS = ['hak-TW', 'zh-TW', 'zh-CN', 'zh-SG'];
+const HAINANESE_LANGS = ['zh-CN', 'zh-SG', 'zh-TW'];
+const LATIN_FALLBACK_LANGS = ['en-SG', 'en-US', 'en-GB'];
+const DIALECT_SPEECH_PROFILES = {
+  mandarin_standard: {
+    langs: MANDARIN_LANGS,
+    voiceKeywords: ['mandarin', 'putonghua', 'chinese']
+  },
+  cantonese_sg: {
+    langs: CANTONESE_LANGS,
+    voiceKeywords: ['cantonese', 'yue', 'hong kong']
+  },
+  hokkien_sg: {
+    langs: HOKKIEN_LANGS,
+    voiceKeywords: ['hokkien', 'taiwanese', 'minnan', 'nan']
+  },
+  teochew_sg: {
+    langs: TEOCHEW_LANGS,
+    voiceKeywords: ['teochew', 'chiuchow', 'chaozhou', 'chaoshan']
+  },
+  hakka_sg: {
+    langs: HAKKA_LANGS,
+    voiceKeywords: ['hakka', 'kejia']
+  },
+  hainanese_sg: {
+    langs: HAINANESE_LANGS,
+    voiceKeywords: ['hainanese', 'hainan']
+  },
+  custom: {
+    langs: MANDARIN_LANGS,
+    voiceKeywords: ['mandarin', 'putonghua', 'chinese']
+  }
+};
 
 let stepsData = [];
 let stepsById = {};
@@ -31,6 +68,7 @@ let state = {
 };
 
 const dom = {};
+let activeSpeechButton = null;
 
 function dedupe(list) {
   return [...new Set((list || []).filter(Boolean))];
@@ -81,6 +119,157 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
+}
+
+function hasSpeechSupport() {
+  return typeof window !== 'undefined'
+    && 'speechSynthesis' in window
+    && typeof window.SpeechSynthesisUtterance === 'function';
+}
+
+function findBestVoice(preferredLangs, voiceKeywords = []) {
+  if (!hasSpeechSupport()) return null;
+  const voices = window.speechSynthesis.getVoices() || [];
+  if (!voices.length) return null;
+  const wants = (preferredLangs || []).map((lang) => String(lang).toLowerCase());
+  const keywords = (voiceKeywords || []).map((keyword) => String(keyword).toLowerCase());
+
+  if (keywords.length) {
+    for (const lang of wants) {
+      const exactKeyword = voices.find((voice) => {
+        const voiceLang = String(voice.lang || '').toLowerCase();
+        const voiceName = String(voice.name || '').toLowerCase();
+        return voiceLang === lang && keywords.some((kw) => voiceName.includes(kw));
+      });
+      if (exactKeyword) return exactKeyword;
+    }
+  }
+
+  for (const lang of wants) {
+    const exact = voices.find((voice) => String(voice.lang || '').toLowerCase() === lang);
+    if (exact) return exact;
+  }
+  for (const lang of wants) {
+    const prefix = lang.split('-')[0];
+    const family = voices.find((voice) => String(voice.lang || '').toLowerCase().startsWith(prefix));
+    if (family) return family;
+  }
+
+  if (keywords.length) {
+    const keywordOnly = voices.find((voice) => {
+      const voiceName = String(voice.name || '').toLowerCase();
+      return keywords.some((kw) => voiceName.includes(kw));
+    });
+    if (keywordOnly) return keywordOnly;
+  }
+
+  return null;
+}
+
+function setSpeechButtonState(button, playing) {
+  if (!button) return;
+  button.classList.toggle('playing', playing);
+  button.textContent = playing ? 'Stop' : 'Play';
+}
+
+function resetActiveSpeechButton() {
+  if (!activeSpeechButton) return;
+  setSpeechButtonState(activeSpeechButton, false);
+  activeSpeechButton = null;
+}
+
+function stopSpeechPlayback() {
+  if (!hasSpeechSupport()) return;
+  window.speechSynthesis.cancel();
+  resetActiveSpeechButton();
+}
+
+function getDialectSpeechProfile(dialectId) {
+  return DIALECT_SPEECH_PROFILES[dialectId] || DIALECT_SPEECH_PROFILES.mandarin_standard;
+}
+
+function buildSpeechPlan({ term, dialectId, mandarinPinyin, dialectRomanization }) {
+  if (!term) return null;
+  const profile = getDialectSpeechProfile(dialectId);
+
+  const candidates = [{
+    text: term,
+    preferredLangs: profile.langs,
+    voiceKeywords: profile.voiceKeywords
+  }];
+
+  if (dialectRomanization?.text && !dialectRomanization.isFallback) {
+    candidates.push({
+      text: dialectRomanization.text,
+      preferredLangs: LATIN_FALLBACK_LANGS,
+      voiceKeywords: []
+    });
+  }
+
+  if (mandarinPinyin) {
+    candidates.push({
+      text: mandarinPinyin,
+      preferredLangs: LATIN_FALLBACK_LANGS,
+      voiceKeywords: []
+    });
+  }
+
+  candidates.push({
+    text: term,
+    preferredLangs: MANDARIN_LANGS,
+    voiceKeywords: ['mandarin', 'putonghua', 'chinese']
+  });
+
+  return { candidates };
+}
+
+function speakPlan(plan, button) {
+  if (!plan || !hasSpeechSupport()) return false;
+  const synth = window.speechSynthesis;
+
+  if (activeSpeechButton === button && synth.speaking) {
+    stopSpeechPlayback();
+    return true;
+  }
+
+  stopSpeechPlayback();
+
+  const candidates = Array.isArray(plan.candidates) && plan.candidates.length
+    ? plan.candidates
+    : [{ text: plan.text, preferredLangs: plan.preferredLangs || MANDARIN_LANGS, voiceKeywords: [] }];
+  let selected = candidates[0];
+  let voice = null;
+
+  for (const candidate of candidates) {
+    if (!candidate?.text) continue;
+    const preferredLangs = Array.isArray(candidate.preferredLangs) && candidate.preferredLangs.length
+      ? candidate.preferredLangs
+      : MANDARIN_LANGS;
+    voice = findBestVoice(preferredLangs, candidate.voiceKeywords || []);
+    selected = { ...candidate, preferredLangs };
+    if (voice) break;
+  }
+
+  const utterance = new window.SpeechSynthesisUtterance(selected.text);
+  utterance.lang = selected.preferredLangs[0];
+  if (voice) utterance.voice = voice;
+  utterance.rate = 0.9;
+  utterance.pitch = 1;
+
+  activeSpeechButton = button;
+  setSpeechButtonState(button, true);
+
+  const cleanup = () => {
+    if (activeSpeechButton === button) {
+      setSpeechButtonState(button, false);
+      activeSpeechButton = null;
+    }
+  };
+  utterance.onend = cleanup;
+  utterance.onerror = cleanup;
+
+  synth.speak(utterance);
+  return true;
 }
 
 function persistDialect() {
@@ -181,6 +370,9 @@ function renderChain() {
 }
 
 function renderTermChip(term, idx = 0) {
+  const shell = document.createElement('div');
+  shell.className = 'chip-shell';
+
   const chip = document.createElement('button');
   chip.type = 'button';
   chip.className = 'chip';
@@ -273,7 +465,30 @@ function renderTermChip(term, idx = 0) {
     }, 1200);
   });
 
-  return chip;
+  shell.appendChild(chip);
+
+  const playBtn = document.createElement('button');
+  playBtn.type = 'button';
+  playBtn.className = 'chip-audio-btn';
+  playBtn.textContent = 'Play';
+  playBtn.setAttribute('aria-label', `Play pronunciation for ${term}`);
+
+  if (!hasSpeechSupport()) {
+    playBtn.disabled = true;
+    playBtn.title = 'Speech synthesis is not supported in this browser';
+  } else {
+    const speechPlan = buildSpeechPlan({
+      term,
+      dialectId: state.dialectId,
+      mandarinPinyin,
+      dialectRomanization
+    });
+    playBtn.title = 'Play pronunciation';
+    playBtn.addEventListener('click', () => speakPlan(speechPlan, playBtn));
+  }
+
+  shell.appendChild(playBtn);
+  return shell;
 }
 
 function renderRecommended(selection, conceptId) {
@@ -357,6 +572,8 @@ function renderDisambiguation(questions) {
 }
 
 function update() {
+  stopSpeechPlayback();
+
   state.sex = readSelectedSex();
   state.reverse = dom.reverseToggle.checked;
 
@@ -498,6 +715,8 @@ export async function initApp() {
   } catch {
     pinyinFn = null;
   }
+
+  if (hasSpeechSupport()) window.speechSynthesis.getVoices();
 
   state.customOverrides = getStoredJson(CUSTOM_OVERRIDES_STORAGE_KEY, {});
   state.dialectId = localStorage.getItem(DIALECT_STORAGE_KEY) || 'mandarin_standard';

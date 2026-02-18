@@ -546,6 +546,11 @@
       gap: 10px;
       justify-content: center;
     }
+    .chip-shell {
+      display: inline-flex;
+      align-items: stretch;
+      gap: 6px;
+    }
     .chip {
       display: inline-flex;
       align-items: center;
@@ -585,6 +590,39 @@
     }
     .chip.copied .copy-hint {
       opacity: 0.9;
+    }
+    .chip-audio-btn {
+      align-self: stretch;
+      min-width: 52px;
+      padding: 0 10px;
+      border-radius: var(--radius-xs);
+      border: 1px solid rgba(140,35,40,0.25);
+      background: rgba(255,255,255,0.88);
+      color: var(--primary-dark);
+      font-family: inherit;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .chip-audio-btn:hover {
+      background: #fff;
+      transform: translateY(-1px);
+    }
+    .chip-audio-btn:active {
+      transform: translateY(0);
+    }
+    .chip-audio-btn.playing {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .chip-audio-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
     }
 
     /* Pinyin below characters */
@@ -841,6 +879,19 @@
       background: var(--success-bg);
       color: var(--success);
     }
+    .refined-section .chip-audio-btn {
+      background: var(--surface);
+      border-color: var(--border);
+      color: var(--chip-text);
+    }
+    .refined-section .chip-audio-btn:hover {
+      background: var(--chip-hover);
+    }
+    .refined-section .chip-audio-btn.playing {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
     .refined-section .results-note {
       color: var(--text-muted);
     }
@@ -884,6 +935,19 @@
     [data-theme="dark"] .results-showcase .chip.copied {
       background: var(--success-bg);
       color: var(--success);
+    }
+    [data-theme="dark"] .results-showcase .chip-audio-btn {
+      background: rgba(255,255,255,0.14);
+      color: var(--text);
+      border-color: rgba(255,255,255,0.3);
+    }
+    [data-theme="dark"] .results-showcase .chip-audio-btn:hover {
+      background: rgba(255,255,255,0.2);
+    }
+    [data-theme="dark"] .results-showcase .chip-audio-btn.playing {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #1c1815;
     }
     [data-theme="dark"] .chip-roman-fallback {
       background: rgba(255,255,255,0.18);
@@ -958,6 +1022,7 @@
       .seal { width: 38px; height: 38px; font-size: 1.1rem; }
       .card { padding: 16px; }
       .chip { font-size: 1.2rem; padding: 10px 18px; }
+      .chip-audio-btn { min-width: 46px; padding: 0 8px; font-size: 0.62rem; }
       .results-showcase { padding: 22px 16px 20px; }
       .refine-btn { min-width: 100px; }
     }
