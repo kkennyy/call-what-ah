@@ -624,6 +624,11 @@
       border-color: var(--accent);
       color: #fff;
     }
+    .chip-audio-btn[aria-pressed="true"] {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
     .chip-audio-btn:disabled {
       opacity: 0.45;
       cursor: not-allowed;
@@ -1002,6 +1007,11 @@
       border-color: var(--accent);
       color: #1c1815;
     }
+    [data-theme="dark"] .results-showcase .chip-audio-btn[aria-pressed="true"] {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #1c1815;
+    }
     [data-theme="dark"] .chip-roman-fallback {
       background: rgba(255,255,255,0.18);
       color: rgba(255,255,255,0.92);
@@ -1164,7 +1174,7 @@
       <div class="results-area" id="recommended-container" aria-live="polite"></div>
       <button type="button" class="pin-btn" id="pin-term-btn" hidden>
         Save as family term (Custom)
-        <span class="toggle-hint">- used when Dialect Preference is Custom</span>
+        <span class="toggle-hint">- choose a term chip first, then save for Custom mode</span>
       </button>
       <div class="result-heading-row" id="alternatives-heading" style="margin-top:14px" hidden>
         <div class="result-subtitle">Also acceptable</div>

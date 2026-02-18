@@ -67,7 +67,9 @@ let state = {
   reverse: false,
   dialectId: 'mandarin_standard',
   customOverrides: {},
-  facts: {}
+  facts: {},
+  pinCandidateConceptId: '',
+  pinCandidateTerm: ''
 };
 
 const dom = {};
@@ -391,7 +393,12 @@ function renderChain() {
   });
 }
 
-function renderTermChip(term, idx = 0, englishGloss = null) {
+function renderTermChip(term, idx = 0, englishGloss = null, options = {}) {
+  const {
+    allowPinSelect = false,
+    pinSelected = false,
+    onSelectPinTerm = null
+  } = options;
   const shell = document.createElement('div');
   shell.className = 'chip-shell';
 
@@ -538,11 +545,28 @@ function renderTermChip(term, idx = 0, englishGloss = null) {
 
   controls.appendChild(dialectBtn);
   controls.appendChild(mandarinBtn);
+
+  if (allowPinSelect && typeof onSelectPinTerm === 'function') {
+    const pinChoiceBtn = document.createElement('button');
+    pinChoiceBtn.type = 'button';
+    pinChoiceBtn.className = 'chip-audio-btn';
+    pinChoiceBtn.textContent = pinSelected ? 'Selected' : 'Use';
+    pinChoiceBtn.setAttribute('aria-pressed', pinSelected ? 'true' : 'false');
+    pinChoiceBtn.title = 'Choose this term for saving to Custom preference';
+    pinChoiceBtn.addEventListener('click', () => onSelectPinTerm(term));
+    controls.appendChild(pinChoiceBtn);
+  }
+
   shell.appendChild(controls);
   return shell;
 }
 
-function renderRecommended(selection, conceptId, englishGlossByTerm = new Map(), canPin = false) {
+function renderRecommended(selection, conceptId, englishGlossByTerm = new Map(), pinOptions = {}) {
+  const {
+    canPin = false,
+    selectedPinTerm = '',
+    onSelectPinTerm = null
+  } = pinOptions;
   dom.recommendedContainer.innerHTML = '';
   if (!selection.recommended) {
     const empty = document.createElement('div');
@@ -557,16 +581,26 @@ function renderRecommended(selection, conceptId, englishGlossByTerm = new Map(),
 
   const chips = document.createElement('div');
   chips.className = 'chips';
-  chips.appendChild(renderTermChip(selection.recommended, 0, englishGlossByTerm.get(selection.recommended) || null));
+  chips.appendChild(renderTermChip(selection.recommended, 0, englishGlossByTerm.get(selection.recommended) || null, {
+    allowPinSelect: canPin,
+    pinSelected: canPin && selectedPinTerm === selection.recommended,
+    onSelectPinTerm
+  }));
   dom.recommendedContainer.appendChild(chips);
 
+  const pinTerm = canPin ? (selectedPinTerm || selection.recommended) : '';
   dom.pinTermBtn.hidden = !canPin;
   dom.pinTermBtn.disabled = !canPin;
-  dom.pinTermBtn.dataset.term = canPin ? selection.recommended : '';
+  dom.pinTermBtn.dataset.term = pinTerm;
   dom.pinTermBtn.dataset.conceptId = canPin ? conceptId : '';
 }
 
-function renderAlternatives(alternatives, englishGlossByTerm = new Map()) {
+function renderAlternatives(alternatives, englishGlossByTerm = new Map(), pinOptions = {}) {
+  const {
+    canPin = false,
+    selectedPinTerm = '',
+    onSelectPinTerm = null
+  } = pinOptions;
   dom.resultsContainer.innerHTML = '';
   if (!alternatives.length) {
     dom.alternativesHeading.hidden = true;
@@ -578,7 +612,11 @@ function renderAlternatives(alternatives, englishGlossByTerm = new Map()) {
   const chips = document.createElement('div');
   chips.className = 'chips';
   alternatives.forEach((term, idx) => {
-    chips.appendChild(renderTermChip(term, idx, englishGlossByTerm.get(term) || null));
+    chips.appendChild(renderTermChip(term, idx, englishGlossByTerm.get(term) || null, {
+      allowPinSelect: canPin,
+      pinSelected: canPin && selectedPinTerm === term,
+      onSelectPinTerm
+    }));
   });
   dom.resultsContainer.appendChild(chips);
 }
@@ -696,6 +734,21 @@ function update() {
     ...(selection.recommended ? [selection.recommended] : []),
     ...baseline
   ]).filter((term) => term !== selection.recommended);
+  const canPin = countDialectChoices(selection, state.dialectId) > 1;
+  const pinSelectableTerms = dedupe([
+    ...(selection.recommended ? [selection.recommended] : []),
+    ...acceptable
+  ]);
+  if (!canPin) {
+    state.pinCandidateConceptId = conceptInfo.conceptId || '';
+    state.pinCandidateTerm = '';
+  } else if (
+    state.pinCandidateConceptId !== conceptInfo.conceptId
+    || !pinSelectableTerms.includes(state.pinCandidateTerm)
+  ) {
+    state.pinCandidateConceptId = conceptInfo.conceptId || '';
+    state.pinCandidateTerm = selection.recommended || pinSelectableTerms[0] || '';
+  }
 
   const questions = getDisambiguationQuestions({
     chain: state.chain,
@@ -726,9 +779,17 @@ function update() {
   });
 
   dom.resultsSection.hidden = false;
-  const canPin = countDialectChoices(selection, state.dialectId) > 1;
-  renderRecommended(selection, conceptInfo.conceptId, englishGlossByTerm, canPin);
-  renderAlternatives(acceptable, englishGlossByTerm);
+  const pinOptions = {
+    canPin,
+    selectedPinTerm: state.pinCandidateTerm,
+    onSelectPinTerm: (term) => {
+      state.pinCandidateConceptId = conceptInfo.conceptId || '';
+      state.pinCandidateTerm = term;
+      update();
+    }
+  };
+  renderRecommended(selection, conceptInfo.conceptId, englishGlossByTerm, pinOptions);
+  renderAlternatives(acceptable, englishGlossByTerm, pinOptions);
 }
 
 function wireEvents() {
