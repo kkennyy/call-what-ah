@@ -542,7 +542,7 @@ function renderTermChip(term, idx = 0, englishGloss = null) {
   return shell;
 }
 
-function renderRecommended(selection, conceptId, englishGlossByTerm = new Map()) {
+function renderRecommended(selection, conceptId, englishGlossByTerm = new Map(), canPin = false) {
   dom.recommendedContainer.innerHTML = '';
   if (!selection.recommended) {
     const empty = document.createElement('div');
@@ -560,10 +560,10 @@ function renderRecommended(selection, conceptId, englishGlossByTerm = new Map())
   chips.appendChild(renderTermChip(selection.recommended, 0, englishGlossByTerm.get(selection.recommended) || null));
   dom.recommendedContainer.appendChild(chips);
 
-  dom.pinTermBtn.hidden = false;
-  dom.pinTermBtn.disabled = false;
-  dom.pinTermBtn.dataset.term = selection.recommended;
-  dom.pinTermBtn.dataset.conceptId = conceptId;
+  dom.pinTermBtn.hidden = !canPin;
+  dom.pinTermBtn.disabled = !canPin;
+  dom.pinTermBtn.dataset.term = canPin ? selection.recommended : '';
+  dom.pinTermBtn.dataset.conceptId = canPin ? conceptId : '';
 }
 
 function renderAlternatives(alternatives, englishGlossByTerm = new Map()) {
@@ -717,7 +717,7 @@ function update() {
   });
 
   dom.resultsSection.hidden = false;
-  renderRecommended(selection, conceptInfo.conceptId, englishGlossByTerm);
+  renderRecommended(selection, conceptInfo.conceptId, englishGlossByTerm, acceptable.length > 0);
   renderAlternatives(acceptable, englishGlossByTerm);
 }
 
@@ -747,7 +747,7 @@ function wireEvents() {
 
     const note = document.createElement('div');
     note.className = 'results-note';
-    note.textContent = `Pinned "${term}" for ${conceptId}. Switch preference to Custom to always use it.`;
+    note.textContent = `Saved "${term}" as your family term for this relationship. Set Dialect Preference to Custom to use it.`;
     dom.recommendedContainer.appendChild(note);
   });
 }
