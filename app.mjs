@@ -315,6 +315,42 @@ function renderDialectDropdown() {
   });
 }
 
+/* ---------- drag-and-drop state (chain reorder) ---------- */
+let _dragFromIndex = -1;
+
+function _clearDropIndicators() {
+  dom.chainContainer.querySelectorAll('.drop-indicator').forEach((el) => el.remove());
+}
+
+function _getDropIndex(container, y) {
+  const rows = [...container.querySelectorAll('.step-row:not(.dragging)')];
+  for (const row of rows) {
+    const box = row.getBoundingClientRect();
+    if (y < box.top + box.height / 2) return Number(row.dataset.idx);
+  }
+  return state.chain.length;
+}
+
+function _showDropIndicator(container, beforeIndex) {
+  _clearDropIndicators();
+  const indicator = document.createElement('div');
+  indicator.className = 'drop-indicator';
+  const rows = [...container.querySelectorAll('.step-row')];
+  const target = rows.find((r) => Number(r.dataset.idx) === beforeIndex);
+  if (target) container.insertBefore(indicator, target);
+  else container.appendChild(indicator);
+}
+
+function _applyReorder(fromIndex, toIndex) {
+  if (fromIndex === toIndex || fromIndex === toIndex - 1) return;
+  const [moved] = state.chain.splice(fromIndex, 1);
+  const insertAt = toIndex > fromIndex ? toIndex - 1 : toIndex;
+  state.chain.splice(insertAt, 0, moved);
+  state.facts = {};
+  renderChain();
+  update();
+}
+
 function renderChain() {
   dom.chainContainer.innerHTML = '';
   state.chain.forEach((entry, i) => {
@@ -322,6 +358,95 @@ function renderChain() {
 
     const row = document.createElement('div');
     row.className = 'step-row';
+    row.dataset.idx = i;
+    row.draggable = true;
+
+    /* --- drag handle --- */
+    const handle = document.createElement('span');
+    handle.className = 'drag-handle';
+    handle.setAttribute('aria-label', 'Drag to reorder');
+    handle.innerHTML =
+      '<svg viewBox="0 0 16 16"><circle cx="5" cy="3" r="1.5"/><circle cx="11" cy="3" r="1.5"/>' +
+      '<circle cx="5" cy="8" r="1.5"/><circle cx="11" cy="8" r="1.5"/>' +
+      '<circle cx="5" cy="13" r="1.5"/><circle cx="11" cy="13" r="1.5"/></svg>';
+    row.appendChild(handle);
+
+    /* --- drag events (desktop) --- */
+    let dragStartedFromHandle = false;
+
+    handle.addEventListener('pointerdown', () => { dragStartedFromHandle = true; });
+    document.addEventListener('pointerup', () => { dragStartedFromHandle = false; }, { once: true });
+
+    row.addEventListener('dragstart', (e) => {
+      if (!dragStartedFromHandle) { e.preventDefault(); return; }
+      _dragFromIndex = i;
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', String(i));
+    });
+    row.addEventListener('dragend', () => {
+      row.classList.remove('dragging');
+      _clearDropIndicators();
+      _dragFromIndex = -1;
+    });
+    row.addEventListener('dragover', (e) => {
+      if (_dragFromIndex < 0) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const dropIdx = _getDropIndex(dom.chainContainer, e.clientY);
+      _showDropIndicator(dom.chainContainer, dropIdx);
+    });
+    row.addEventListener('drop', (e) => {
+      e.preventDefault();
+      _clearDropIndicators();
+      const dropIdx = _getDropIndex(dom.chainContainer, e.clientY);
+      _applyReorder(_dragFromIndex, dropIdx);
+      _dragFromIndex = -1;
+    });
+
+    /* --- touch drag (mobile) --- */
+    let touchClone = null;
+    let touchStartY = 0;
+    let touchCurrentDropIdx = -1;
+
+    handle.addEventListener('touchstart', (e) => {
+      if (state.chain.length < 2) return;
+      e.preventDefault();
+      _dragFromIndex = i;
+      touchStartY = e.touches[0].clientY;
+
+      touchClone = row.cloneNode(true);
+      touchClone.style.cssText =
+        'position:fixed;left:0;right:0;z-index:9999;opacity:0.85;pointer-events:none;' +
+        'box-shadow:0 4px 16px rgba(0,0,0,0.18);';
+      const rect = row.getBoundingClientRect();
+      touchClone.style.top = rect.top + 'px';
+      touchClone.style.width = rect.width + 'px';
+      document.body.appendChild(touchClone);
+      row.classList.add('dragging');
+    }, { passive: false });
+
+    handle.addEventListener('touchmove', (e) => {
+      if (_dragFromIndex < 0 || !touchClone) return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      const rect = row.getBoundingClientRect();
+      touchClone.style.top = (rect.top + (touch.clientY - touchStartY)) + 'px';
+      touchStartY = touch.clientY;
+
+      touchCurrentDropIdx = _getDropIndex(dom.chainContainer, touch.clientY);
+      _showDropIndicator(dom.chainContainer, touchCurrentDropIdx);
+    }, { passive: false });
+
+    handle.addEventListener('touchend', () => {
+      if (_dragFromIndex < 0) return;
+      row.classList.remove('dragging');
+      _clearDropIndicators();
+      if (touchClone) { touchClone.remove(); touchClone = null; }
+      if (touchCurrentDropIdx >= 0) _applyReorder(_dragFromIndex, touchCurrentDropIdx);
+      _dragFromIndex = -1;
+      touchCurrentDropIdx = -1;
+    });
 
     const num = document.createElement('span');
     num.className = 'step-num';
@@ -790,6 +915,26 @@ function wireEvents() {
     state.chain.push({ stepId: stepsData[0].id, rank: null });
     renderChain();
     update();
+  });
+
+  /* container-level drag handlers for drops in gaps between rows */
+  dom.chainContainer.addEventListener('dragover', (e) => {
+    if (_dragFromIndex < 0) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const dropIdx = _getDropIndex(dom.chainContainer, e.clientY);
+    _showDropIndicator(dom.chainContainer, dropIdx);
+  });
+  dom.chainContainer.addEventListener('drop', (e) => {
+    if (_dragFromIndex < 0) return;
+    e.preventDefault();
+    _clearDropIndicators();
+    const dropIdx = _getDropIndex(dom.chainContainer, e.clientY);
+    _applyReorder(_dragFromIndex, dropIdx);
+    _dragFromIndex = -1;
+  });
+  dom.chainContainer.addEventListener('dragleave', (e) => {
+    if (!dom.chainContainer.contains(e.relatedTarget)) _clearDropIndicators();
   });
 
   document.getElementById('sex-selector').addEventListener('change', () => update());

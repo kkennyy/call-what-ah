@@ -301,6 +301,46 @@
       gap: 8px;
       margin-bottom: 10px;
       animation: fadeInUp 0.3s ease-out both;
+      transition: opacity 0.2s;
+    }
+    .step-row.dragging {
+      opacity: 0.35;
+    }
+
+    .drag-handle {
+      width: 18px;
+      flex-shrink: 0;
+      cursor: grab;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      opacity: 0.35;
+      transition: opacity 0.2s;
+      touch-action: none;
+      user-select: none;
+      font-size: 0.85rem;
+      line-height: 1;
+      letter-spacing: 1px;
+    }
+    .drag-handle:hover {
+      opacity: 0.8;
+    }
+    .drag-handle:active {
+      cursor: grabbing;
+    }
+    .drag-handle svg {
+      width: 14px;
+      height: 14px;
+      fill: currentColor;
+    }
+
+    .drop-indicator {
+      height: 2px;
+      background: var(--primary);
+      border-radius: 1px;
+      margin: -6px 0;
+      pointer-events: none;
     }
 
     .step-num {
@@ -980,6 +1020,9 @@
     /* ============== DARK MODE OVERRIDES ============== */
     [data-theme="dark"] .card {
       border-color: rgba(255,255,255,0.05);
+    }
+    [data-theme="dark"] .drag-handle {
+      color: rgba(255,255,255,0.5);
     }
     [data-theme="dark"] .btn-remove:hover {
       background: rgba(232,85,85,0.15);
