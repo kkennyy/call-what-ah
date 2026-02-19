@@ -67,9 +67,7 @@ let state = {
   reverse: false,
   dialectId: 'mandarin_standard',
   customOverrides: {},
-  facts: {},
-  pinCandidateConceptId: '',
-  pinCandidateTerm: ''
+  facts: {}
 };
 
 const dom = {};
@@ -397,7 +395,8 @@ function renderTermChip(term, idx = 0, englishGloss = null, options = {}) {
   const {
     allowPinSelect = false,
     pinSelected = false,
-    onSelectPinTerm = null
+    onSelectPinTerm = null,
+    romanizationDialectId = null
   } = options;
   const shell = document.createElement('div');
   shell.className = 'chip-shell';
@@ -441,7 +440,8 @@ function renderTermChip(term, idx = 0, englishGloss = null, options = {}) {
   });
   textWrap.appendChild(textSpan);
 
-  const dialectRomanization = getDialectRomanization(term, state.dialectId, romanizationData, mandarinPinyin);
+  const effectiveDialectId = romanizationDialectId || state.dialectId;
+  const dialectRomanization = getDialectRomanization(term, effectiveDialectId, romanizationData, mandarinPinyin);
   if (dialectRomanization) {
     const line = document.createElement('span');
     line.className = 'chip-roman-line';
@@ -550,9 +550,12 @@ function renderTermChip(term, idx = 0, englishGloss = null, options = {}) {
     const pinChoiceBtn = document.createElement('button');
     pinChoiceBtn.type = 'button';
     pinChoiceBtn.className = 'chip-audio-btn';
-    pinChoiceBtn.textContent = pinSelected ? 'Selected' : 'Use';
+    pinChoiceBtn.textContent = pinSelected ? '\u2713 Saved' : 'Save';
     pinChoiceBtn.setAttribute('aria-pressed', pinSelected ? 'true' : 'false');
-    pinChoiceBtn.title = 'Choose this term for saving to Custom preference';
+    pinChoiceBtn.title = 'Save this term as your family preference (Custom mode)';
+    if (pinSelected) {
+      pinChoiceBtn.disabled = true;
+    }
     pinChoiceBtn.addEventListener('click', () => onSelectPinTerm(term));
     controls.appendChild(pinChoiceBtn);
   }
@@ -565,17 +568,16 @@ function renderRecommended(selection, conceptId, englishGlossByTerm = new Map(),
   const {
     canPin = false,
     selectedPinTerm = '',
-    onSelectPinTerm = null
+    onSelectPinTerm = null,
+    romanizationDialectId = null
   } = pinOptions;
   dom.recommendedContainer.innerHTML = '';
+  dom.pinTermBtn.hidden = true;
   if (!selection.recommended) {
     const empty = document.createElement('div');
     empty.className = 'results-empty';
     empty.textContent = 'Need more details before recommending a single term.';
     dom.recommendedContainer.appendChild(empty);
-    dom.pinTermBtn.hidden = true;
-    dom.pinTermBtn.dataset.term = '';
-    dom.pinTermBtn.dataset.conceptId = conceptId || '';
     return;
   }
 
@@ -584,22 +586,18 @@ function renderRecommended(selection, conceptId, englishGlossByTerm = new Map(),
   chips.appendChild(renderTermChip(selection.recommended, 0, englishGlossByTerm.get(selection.recommended) || null, {
     allowPinSelect: canPin,
     pinSelected: canPin && selectedPinTerm === selection.recommended,
-    onSelectPinTerm
+    onSelectPinTerm,
+    romanizationDialectId
   }));
   dom.recommendedContainer.appendChild(chips);
-
-  const pinTerm = canPin ? (selectedPinTerm || selection.recommended) : '';
-  dom.pinTermBtn.hidden = !canPin;
-  dom.pinTermBtn.disabled = !canPin;
-  dom.pinTermBtn.dataset.term = pinTerm;
-  dom.pinTermBtn.dataset.conceptId = canPin ? conceptId : '';
 }
 
 function renderAlternatives(alternatives, englishGlossByTerm = new Map(), pinOptions = {}) {
   const {
     canPin = false,
     selectedPinTerm = '',
-    onSelectPinTerm = null
+    onSelectPinTerm = null,
+    romanizationDialectId = null
   } = pinOptions;
   dom.resultsContainer.innerHTML = '';
   if (!alternatives.length) {
@@ -615,7 +613,8 @@ function renderAlternatives(alternatives, englishGlossByTerm = new Map(), pinOpt
     chips.appendChild(renderTermChip(term, idx, englishGlossByTerm.get(term) || null, {
       allowPinSelect: canPin,
       pinSelected: canPin && selectedPinTerm === term,
-      onSelectPinTerm
+      onSelectPinTerm,
+      romanizationDialectId
     }));
   });
   dom.resultsContainer.appendChild(chips);
@@ -735,20 +734,10 @@ function update() {
     ...baseline
   ]).filter((term) => term !== selection.recommended);
   const canPin = countDialectChoices(selection, state.dialectId) > 1;
-  const pinSelectableTerms = dedupe([
-    ...(selection.recommended ? [selection.recommended] : []),
-    ...acceptable
-  ]);
-  if (!canPin) {
-    state.pinCandidateConceptId = conceptInfo.conceptId || '';
-    state.pinCandidateTerm = '';
-  } else if (
-    state.pinCandidateConceptId !== conceptInfo.conceptId
-    || !pinSelectableTerms.includes(state.pinCandidateTerm)
-  ) {
-    state.pinCandidateConceptId = conceptInfo.conceptId || '';
-    state.pinCandidateTerm = selection.recommended || pinSelectableTerms[0] || '';
-  }
+  const existingOverride = state.customOverrides[conceptInfo.conceptId];
+  const savedPinTerm = existingOverride
+    ? (typeof existingOverride === 'string' ? existingOverride : existingOverride.term)
+    : '';
 
   const questions = getDisambiguationQuestions({
     chain: state.chain,
@@ -779,14 +768,18 @@ function update() {
   });
 
   dom.resultsSection.hidden = false;
+  const customSourceDialectId = selection.customSourceDialectId || null;
   const pinOptions = {
     canPin,
-    selectedPinTerm: state.pinCandidateTerm,
+    selectedPinTerm: savedPinTerm,
     onSelectPinTerm: (term) => {
-      state.pinCandidateConceptId = conceptInfo.conceptId || '';
-      state.pinCandidateTerm = term;
+      const cid = conceptInfo.conceptId;
+      if (!cid || !term) return;
+      state.customOverrides[cid] = { term, sourceDialectId: state.dialectId };
+      persistOverrides();
       update();
-    }
+    },
+    romanizationDialectId: state.dialectId === 'custom' ? customSourceDialectId : null
   };
   renderRecommended(selection, conceptInfo.conceptId, englishGlossByTerm, pinOptions);
   renderAlternatives(acceptable, englishGlossByTerm, pinOptions);
@@ -809,18 +802,6 @@ function wireEvents() {
     update();
   });
 
-  dom.pinTermBtn.addEventListener('click', () => {
-    const conceptId = dom.pinTermBtn.dataset.conceptId;
-    const term = dom.pinTermBtn.dataset.term;
-    if (!conceptId || !term) return;
-    state.customOverrides[conceptId] = term;
-    persistOverrides();
-
-    const note = document.createElement('div');
-    note.className = 'results-note';
-    note.textContent = `Saved "${term}" as your family term for this relationship. Set Dialect Preference to Custom to use it.`;
-    dom.recommendedContainer.appendChild(note);
-  });
 }
 
 async function loadData() {
@@ -885,6 +866,15 @@ export async function initApp() {
   if (hasSpeechSupport()) window.speechSynthesis.getVoices();
 
   state.customOverrides = getStoredJson(CUSTOM_OVERRIDES_STORAGE_KEY, {});
+  // Migrate v1 string-format overrides to { term, sourceDialectId } objects
+  let migrated = false;
+  for (const [key, val] of Object.entries(state.customOverrides)) {
+    if (typeof val === 'string') {
+      state.customOverrides[key] = { term: val, sourceDialectId: null };
+      migrated = true;
+    }
+  }
+  if (migrated) persistOverrides();
   state.dialectId = localStorage.getItem(DIALECT_STORAGE_KEY) || 'mandarin_standard';
 
   state.chain.push({ stepId: stepsData[0].id, rank: null });

@@ -379,7 +379,8 @@ export function selectTerms(input) {
 
   if (!requiresResolution) {
     if (dialectId === 'custom' && customOverrides[conceptId]) {
-      recommended = customOverrides[conceptId];
+      const override = customOverrides[conceptId];
+      recommended = typeof override === 'string' ? override : override.term;
       confidence = 'high';
       provenance = 'custom_override';
     } else if (conceptVariant?.preferred) {
@@ -409,6 +410,10 @@ export function selectTerms(input) {
     alternatives.unshift(standardPreferred);
   }
 
+  const customSourceDialectId = provenance === 'custom_override' && typeof customOverrides[conceptId] === 'object'
+    ? customOverrides[conceptId].sourceDialectId || null
+    : null;
+
   return {
     recommended,
     alternatives,
@@ -416,7 +421,8 @@ export function selectTerms(input) {
     provenance,
     requiresResolution,
     concept,
-    standardPreferred
+    standardPreferred,
+    customSourceDialectId
   };
 }
 
